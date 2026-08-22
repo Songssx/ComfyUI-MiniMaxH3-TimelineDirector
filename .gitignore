@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Keep generated and source media out of the Git repository.
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+preview_cache/
+proxies/
+temp/

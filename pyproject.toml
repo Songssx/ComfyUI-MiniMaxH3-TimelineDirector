@@ -1,0 +1,17 @@
+[project]
+name = "comfyui-minimax-h3-timeline-director"
+version = "0.1.0"
+description = "Editable reference media timeline for ComfyUI MiniMax H3 Reference to Video"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["comfyui", "minimax-h3", "reference-to-video", "timeline", "video"]
+
+[project.optional-dependencies]
+dev = []
+
+[tool.comfy]
+PublisherId = "local"
+DisplayName = "MiniMax H3 Timeline Director"
+Icon = ""
