@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  Creator: <strong>石兄松 / Shi Xiongsong</strong><br>
+  Creator: <strong>Xiao Huanggua</strong><br>
   <a href="https://space.bilibili.com/219572544?spm_id_from=333.40164.0.0">Bilibili</a>
   ·
   <a href="https://www.youtube.com/@shixiongsong">YouTube</a>
