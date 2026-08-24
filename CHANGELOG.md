@@ -2,9 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project has not yet selected a public-release license or final repository versioning policy.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project is released under GPL-3.0.
 
 ## [Unreleased]
+
+## [0.1.1] - 2026-08-24
+
+### Added
+
+- Global video-soundtrack reference toggle on the original-audio track. Disabling it keeps video references active while omitting `ref_video_audio_N` inputs.
+
+### Fixed
+
+- Do not create automatic boundary frames when the cyan selection fully contains a reference video or exactly matches its edges.
+- Keep the front-end reference-label preview consistent with the backend boundary-frame rules.
+
+## [0.1.0] - 2026-08-23
 
 ### Added
 
@@ -25,7 +38,3 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The
 - `独立音频合并` concatenated standalone-audio output.
 - Workflow JSON persistence, example workflow, and media smoke tests.
 - English and Simplified Chinese documentation.
-
-## [0.1.0] - Pre-release
-
-- Initial local development milestone.

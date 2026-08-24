@@ -82,6 +82,24 @@ def main() -> None:
     two_audio_timeline = {"audios": [timeline["audios"][0], timeline["audios"][0]]}
     assert backend._standalone_audio_track(two_audio_timeline)["waveform"].shape[-1] == 6 * 44100
 
+    # Disabling video soundtrack references must keep the reference video and
+    # independent audio, while omitting only ref_video_audio_N.
+    muted_reference_timeline = json.loads(json.dumps(timeline))
+    muted_reference_timeline["videoAudioEnabled"] = False
+    muted_images, muted_videos, muted_paired_audio, muted_standalone_audio = backend._build_references(
+        muted_reference_timeline, target_width, target_height
+    )
+    assert muted_images and muted_videos and muted_standalone_audio
+    assert not muted_paired_audio
+    assert backend._timeline_video_audio(muted_reference_timeline)["waveform"].shape[-1] == 10 * 44100
+
+    # A selection that contains the complete clip (or exactly matches it) is
+    # using the whole video and must not synthesize redundant boundary frames.
+    boundary_clip = {"start": 0.0, "duration": 2.56, "trimStart": 1.65}
+    assert backend._pick_boundaries([boundary_clip], 0.0, 8.0) == []
+    assert backend._pick_boundaries([boundary_clip], 0.0, 2.56) == []
+    assert len(backend._pick_boundaries([boundary_clip], 0.5, 2.0)) == 2
+
     # A five-second empty gap between two clips must produce only the two
     # bridge frames: last frame of the left clip + first frame of the right.
     gap_timeline = {

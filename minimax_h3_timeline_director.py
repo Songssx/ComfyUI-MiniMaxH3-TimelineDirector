@@ -481,10 +481,15 @@ def _pick_boundaries(clips: list[dict[str, Any]], selection_start: float, select
     if not clips:
         return []
     epsilon = 1.0 / FPS
+    tolerance = 0.5 / FPS
     ordered = sorted(clips, key=lambda clip: (_float(clip.get("start")), _clip_end(clip)))
     result: list[tuple[dict[str, Any], float, str]] = []
 
-    containing_start = next((c for c in ordered if _float(c.get("start")) <= selection_start < _clip_end(c)), None)
+    containing_start = next((
+        c for c in ordered
+        if _float(c.get("start")) < selection_start - tolerance
+        and selection_start < _clip_end(c) - tolerance
+    ), None)
     if containing_start:
         result.append((containing_start, max(_float(containing_start.get("start")), selection_start - epsilon), "selection-in"))
     else:
@@ -493,7 +498,11 @@ def _pick_boundaries(clips: list[dict[str, Any]], selection_start: float, select
             clip = max(left, key=_clip_end)
             result.append((clip, max(_float(clip.get("start")), _clip_end(clip) - epsilon), "left-gap"))
 
-    containing_end = next((c for c in ordered if _float(c.get("start")) < selection_end <= _clip_end(c)), None)
+    containing_end = next((
+        c for c in ordered
+        if _float(c.get("start")) + tolerance < selection_end
+        and selection_end < _clip_end(c) - tolerance
+    ), None)
     if containing_end:
         result.append((containing_end, min(_clip_end(containing_end) - epsilon, selection_end + epsilon), "selection-out"))
     else:
@@ -527,6 +536,7 @@ def _build_references(
     ref_videos: dict[str, torch.Tensor] = {}
     ref_video_audios: dict[str, dict[str, Any]] = {}
     ref_audios: dict[str, dict[str, Any]] = {}
+    video_audio_enabled = timeline.get("videoAudioEnabled", True) is not False
 
     # User-uploaded bins own their visible ordinal space: independent images
     # always begin at <Picture 1>. Automatic boundary frames follow them.
@@ -571,7 +581,7 @@ def _build_references(
                 continue
             index = len(ref_videos)
             ref_videos[f"ref_video_{index}"] = frames
-            if clip.get("hasAudio", True):
+            if video_audio_enabled and clip.get("hasAudio", True):
                 audio = _decode_audio(path, piece_start, piece_duration)
                 if audio is not None:
                     ref_video_audios[f"ref_video_audio_{index}"] = audio

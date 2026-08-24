@@ -32,10 +32,13 @@ function installStyles() {
       border:1px solid #333d50; border-radius:4px; outline:none; user-select:text; }
     .m3td-field input:focus { border-color:var(--cyan); }
     .m3td-help { margin-left:auto; color:#9da9bc; }
-    .m3td-timeline-shell { display:grid; grid-template-columns:88px minmax(0,1fr); border-bottom:1px solid var(--line); }
+    .m3td-timeline-shell { display:grid; grid-template-columns:108px minmax(0,1fr); border-bottom:1px solid var(--line); }
     .m3td-labels { background:#151a22; border-right:1px solid var(--line); padding-top:26px; }
     .m3td-track-label { display:flex; height:94px; align-items:center; padding:0 10px; border-top:1px solid #272e3b; color:#aab5c7; }
     .m3td-track-label.audio { height:50px; color:#c0a36f; }
+    .m3td-audio-toggle { margin-left:auto; height:22px; padding:0 6px; border:1px solid #6c5638; border-radius:4px;
+      color:#f3cf92; background:#382d20; cursor:pointer; font-size:10px; }
+    .m3td-audio-toggle.off { color:#c3cad5; background:#282d36; border-color:#4c5565; }
     .m3td-viewport { position:relative; overflow:auto; background:#0e1219; scrollbar-color:#49556a #171c25; }
     .m3td-stage { position:relative; min-width:100%; height:170px; }
     .m3td-ruler { position:relative; height:26px; border-bottom:1px solid #2c3443; background:#131821; }
@@ -45,6 +48,7 @@ function installStyles() {
     .m3td-track { position:relative; height:94px; border-bottom:1px solid #262d3a;
       background-image:linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px); }
     .m3td-track.audio { height:50px; background-color:#111720; }
+    .m3td-track.audio.muted .m3td-audio-clip { opacity:.28; filter:grayscale(1); }
     .m3td-clip { position:absolute; top:8px; height:78px; min-width:10px; overflow:hidden; border:1px solid #5688ec;
       border-radius:5px; background:#223c6e; cursor:grab; box-shadow:0 3px 10px #0007; }
     .m3td-clip.selected { border:2px solid #b9ddff; box-shadow:0 0 0 2px #328bff99,0 5px 14px #0009; }
@@ -116,7 +120,7 @@ const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function emptyState() {
-  return { version: 1, fps: 24, selection: { start: 0, duration: 5 }, videoClips: [], images: [], audios: [] };
+  return { version: 2, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [] };
 }
 
 function normalizeState(raw) {
@@ -124,6 +128,7 @@ function normalizeState(raw) {
   if (!raw || typeof raw !== "object") return base;
   base.selection.start = Math.max(0, num(raw.selection?.start, 0));
   base.selection.duration = Math.max(5 / 24, num(raw.selection?.duration, 5));
+  base.videoAudioEnabled = raw.videoAudioEnabled !== false;
   base.videoClips = Array.isArray(raw.videoClips) ? raw.videoClips.filter(x => x?.file).map(c => ({
     id: c.id || uid(), file: c.file, name: c.name || c.file.split(/[\\/]/).pop(), start: Math.max(0, num(c.start)),
     duration: Math.max(5 / 24, num(c.duration, 5)), trimStart: Math.max(0, num(c.trimStart)),
@@ -224,17 +229,23 @@ class TimelineDirectorUI {
     const start = this.state.selection.start;
     const end = start + this.state.selection.duration;
     const ordered = [...this.state.videoClips].sort((a,b) => a.start - b.start);
-    const hasLeft = ordered.some(c => c.start <= start);
-    const hasRight = ordered.some(c => c.start + c.duration >= end);
-    const boundaryCount = Math.min(2, (hasLeft ? 1 : 0) + (hasRight ? 1 : 0));
+    const epsilon = 1 / 24;
+    const tolerance = .5 / 24;
+    const clipEnd = c => c.start + c.duration;
+    const startCutsClip = ordered.some(c => c.start < start - tolerance && start < clipEnd(c) - tolerance);
+    const hasLeftGapContext = !startCutsClip && ordered.some(c => clipEnd(c) <= start + epsilon);
+    const endCutsClip = ordered.some(c => c.start + tolerance < end && end < clipEnd(c) - tolerance);
+    const hasRightGapContext = !endCutsClip && ordered.some(c => c.start >= end - epsilon);
+    const boundaryCount = Math.min(2, (startCutsClip || hasLeftGapContext ? 1 : 0) + (endCutsClip || hasRightGapContext ? 1 : 0));
     const videoPieces = [];
     let pairedAudioCount = 0;
     for (const clip of ordered) {
       let overlap = Math.min(end, clip.start + clip.duration) - Math.max(start, clip.start);
       while (overlap >= 5 / 24 && videoPieces.length < 3) {
         const seconds = Math.min(15, overlap);
-        videoPieces.push({clipId: clip.id, seconds, hasAudio: !!clip.hasAudio});
-        if (clip.hasAudio) pairedAudioCount++;
+        const hasAudio = this.state.videoAudioEnabled && !!clip.hasAudio;
+        videoPieces.push({clipId: clip.id, seconds, hasAudio});
+        if (hasAudio) pairedAudioCount++;
         overlap -= seconds;
       }
       if (videoPieces.length >= 3) break;
@@ -312,7 +323,7 @@ class TimelineDirectorUI {
         <span class="m3td-help">拖动片段/播放头 · 边缘自动吸附 · 选区时长=生成时长</span>
       </div>
       <div class="m3td-timeline-shell">
-        <div class="m3td-labels"><div class="m3td-track-label">参考视频</div><div class="m3td-track-label audio">视频原声</div></div>
+        <div class="m3td-labels"><div class="m3td-track-label">参考视频</div><div class="m3td-track-label audio"><span>视频原声</span><button class="m3td-audio-toggle" data-action="videoAudioToggle" type="button">关闭</button></div></div>
         <div class="m3td-viewport"><div class="m3td-stage"></div></div>
       </div>
       <div class="m3td-inspector"><span>未选中片段</span></div>
@@ -323,7 +334,7 @@ class TimelineDirectorUI {
           <div class="m3td-preview-time">00:00.00</div>
           <div class="m3td-preview-name">当前没有可预览的视频</div>
           <button class="m3td-btn" data-action="previewPlay">▶ 播放预览</button>
-          <div class="m3td-preview-note">仅预览使用低清无声代理；最终生成仍读取原始素材和原声。</div>
+          <div class="m3td-preview-note">仅预览使用低清无声代理；最终生成读取原始视频，视频原声是否参与参考由轨道开关控制。</div>
         </div>
       </div>
       <div class="m3td-assets">
@@ -345,6 +356,7 @@ class TimelineDirectorUI {
     this.previewTime = this.root.querySelector(".m3td-preview-time");
     this.previewName = this.root.querySelector(".m3td-preview-name");
     this.previewPlay = this.root.querySelector('[data-action="previewPlay"]');
+    this.videoAudioToggle = this.root.querySelector('[data-action="videoAudioToggle"]');
     this.root.querySelector('[data-action="video"]').onclick = () => this.root.querySelector('[data-upload="video"]').click();
     this.root.querySelector('[data-action="image"]').onclick = () => this.root.querySelector('[data-upload="image"]').click();
     this.root.querySelector('[data-action="audio"]').onclick = () => this.root.querySelector('[data-upload="audio"]').click();
@@ -352,6 +364,12 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-action="delete"]').onclick = () => this.deleteSelected();
     this.root.querySelector('[data-action="fit"]').onclick = () => this.fitTimeline();
     this.root.querySelector('[data-action="fitGap"]').onclick = () => this.fitSelectionToNearestGap();
+    this.videoAudioToggle.onclick = event => {
+      event.stopPropagation();
+      this.state.videoAudioEnabled = !this.state.videoAudioEnabled;
+      this.sync(); this.render();
+      this.setStatus(this.state.videoAudioEnabled ? "视频原声参考已开启" : "视频原声参考已关闭");
+    };
     this.previewPlay.onclick = () => this.togglePreviewPlayback();
     this.previewVideo.onplay = () => { this.previewPlay.textContent = "❚❚ 暂停预览"; };
     this.previewVideo.onpause = () => { this.previewPlay.textContent = "▶ 播放预览"; };
@@ -395,6 +413,12 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-field="selectionStart"]').value = this.state.selection.start.toFixed(2);
     this.root.querySelector('[data-field="selectionDuration"]').value = this.state.selection.duration.toFixed(2);
     this.root.querySelector('[data-field="zoom"]').value = this.zoom;
+    if (this.videoAudioToggle) {
+      this.videoAudioToggle.textContent = this.state.videoAudioEnabled ? "关闭" : "开启";
+      this.videoAudioToggle.classList.toggle("off", !this.state.videoAudioEnabled);
+      this.videoAudioToggle.title = this.state.videoAudioEnabled ? "点击后视频仍参与参考，但不传入视频原声" : "点击后恢复视频原声参考";
+      this.videoAudioToggle.setAttribute("aria-pressed", String(this.state.videoAudioEnabled));
+    }
     this.renderTimeline();
     this.renderInspector();
     this.renderAssets();
@@ -414,7 +438,7 @@ class TimelineDirectorUI {
     }
     html += '</div><div class="m3td-track">';
     for (const clip of this.state.videoClips) html += this.clipHTML(clip, plan);
-    html += '</div><div class="m3td-track audio">';
+    html += `</div><div class="m3td-track audio ${this.state.videoAudioEnabled ? "" : "muted"}">`;
     for (const clip of this.state.videoClips) if (clip.hasAudio) html += this.audioClipHTML(clip);
     html += '</div>';
     const sel = this.state.selection;
@@ -673,7 +697,7 @@ class TimelineDirectorUI {
       <label class="m3td-field">起点 <input data-edit="start" type="number" min="0" step="0.04" value="${clip.start.toFixed(2)}"></label>
       <label class="m3td-field">源入点 <input data-edit="trimStart" type="number" min="0" step="0.04" value="${clip.trimStart.toFixed(2)}"></label>
       <label class="m3td-field">片段长度 <input data-edit="duration" type="number" min="0.21" step="0.04" value="${clip.duration.toFixed(2)}"></label>
-      <span>${clip.hasAudio ? "✓ 已绑定原声" : "— 无原声"}</span>`;
+      <span>${clip.hasAudio ? (this.state.videoAudioEnabled ? "✓ 原声参考开启" : "⊘ 原声参考关闭") : "— 无原声"}</span>`;
     for (const input of this.inspector.querySelectorAll("input[data-edit]")) input.onchange = () => {
       const key=input.dataset.edit, value=Math.max(0,num(input.value));
       if (key === "duration") clip.duration=clamp(value,5/24,Math.max(5/24,clip.sourceDuration-clip.trimStart));
@@ -704,7 +728,7 @@ class TimelineDirectorUI {
     const pictureText=independentPictures ? `独立图片 <Picture 1..${independentPictures}>` : "无独立图片";
     const boundaryText=encodedBoundaryCount ? `自动边界帧 <Picture ${independentPictures+1}..${pictures}>` : "无自动边界帧";
     const standaloneAudio=this.state.audios.length ? `独立音频 <Audio 1..${this.state.audios.length}>` : "无独立音频";
-    const pairedAudio=plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签";
+    const pairedAudio=!this.state.videoAudioEnabled ? "视频原声：参考已关闭" : (plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签");
     this.root.querySelector(".m3td-tags").textContent = `${pictureText} · ${boundaryText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
   }
 

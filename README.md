@@ -37,6 +37,7 @@ Reference-to-video workflows become difficult to manage when they contain severa
 
 - **Editable multi-clip timeline** — move, trim, split, delete, and precisely position video clips.
 - **Bound video soundtracks** — original audio follows every move, trim, and split operation.
+- **Optional video-audio reference** — disable all paired video soundtracks while keeping the selected reference videos active.
 - **Range-aware reference extraction** — only the part of a video overlapping the cyan range is decoded and sent to H3.
 - **Automatic boundary frames** — extracts visual context immediately outside the selected range.
 - **Gap bridging** — a range placed between two clips uses the left clip's final frame and the right clip's first frame.
@@ -110,7 +111,7 @@ Double-clicking an empty timeline gap also matches the cyan range to that gap.
 ### Timeline tracks
 
 - **Reference Video** — draggable and trimmable video clips.
-- **Video Original Audio** — waveform previews bound to their video clips.
+- **Video Original Audio** — waveform previews bound to their video clips. Use the adjacent **Close/Open** button to exclude or restore paired video audio in H3 reference encoding.
 - **Cyan range (`GEN`)** — the interval used to prepare H3 references and the generation duration.
 - **Red playhead** — the current monitoring/split position; click or drag it continuously.
 - **Yellow snap guide** — appears when an edge or playhead snaps to another timeline boundary.
@@ -130,7 +131,7 @@ The first preview request creates a cached proxy with these limits:
 - audio: disabled;
 - purpose: preview only.
 
-Final H3 conditioning still uses the original source video and its original soundtrack.
+Final H3 conditioning always uses the original source video. Its original soundtrack is included only while the **Video Original Audio** reference switch is enabled.
 
 ### Independent reference bins
 
@@ -177,6 +178,12 @@ Example: a 10-second clip occupies `0–10s`, while the cyan range is `2–7s`.
 - `<Video 1>` receives the source interval `2–7s` at 24 fps.
 - The paired soundtrack receives the same five-second interval.
 - A frame immediately before 2 seconds and a frame immediately after 7 seconds are prepared as boundary pictures.
+
+The video-audio switch affects H3 reference conditioning only. The `Video Soundtrack Mix` output remains available for downstream workflow use.
+
+### Selection contains the whole video
+
+If the cyan range fully contains a clip, or exactly matches both clip edges, that complete video is already the reference. No redundant automatic boundary frame is created. Boundary frames are reserved for ranges that cut through a clip edge or bridge an empty gap.
 
 ### Empty gap between clips
 
