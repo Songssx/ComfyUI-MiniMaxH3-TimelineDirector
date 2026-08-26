@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-26
+
+### Added
+
+- Per-clip video-purpose selector with `Fixed Guide`, `Editable Reference`, and `Boundary Only` modes.
+- Editable-reference mode for character, clothing, and style replacement: the selected overlap becomes `<Video N>` without any hard guide.
+- Boundary-only mode keeps the overlap as `<Video N>` while anchoring only its first and last frames.
+
+### Compatibility
+
+- Existing workflows and newly uploaded clips default to `Fixed Guide`, preserving the 0.2 behavior until the user explicitly changes a clip mode.
+
 ## [0.2.0] - 2026-08-26
 
 ### Added

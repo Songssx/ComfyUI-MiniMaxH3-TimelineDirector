@@ -181,6 +181,31 @@ def main() -> None:
     )
     native_keyframes = applied[0][1]["minimax_keyframes"]
     assert [item["resolved_frame_index"] for item in native_keyframes] == [0, pure_gap_length - 1]
+
+    # Per-clip edit mode must remove hard guides so identity/style replacement
+    # can act on the complete source video. Boundary mode keeps only two stills.
+    editable_timeline = {
+        "selection": {"start": 0.0, "duration": 5.0},
+        "videoClips": [{
+            "id": "editable", "file": video, "start": 0.0, "duration": 5.0,
+            "trimStart": 0.0, "hasAudio": True, "referenceMode": "edit",
+        }], "images": [], "audios": [],
+    }
+    edit_images, edit_videos, edit_audio, _, edit_guides = backend._build_references(
+        editable_timeline, target_width, target_height, backend._aligned_h3_length(5.0)
+    )
+    assert not edit_images and len(edit_videos) == 1 and len(edit_audio) == 1
+    assert not edit_guides, "editable reference mode must not hard-lock the original person"
+
+    boundary_timeline = json.loads(json.dumps(editable_timeline))
+    boundary_timeline["videoClips"][0]["referenceMode"] = "boundary"
+    _, boundary_videos, boundary_audio, _, boundary_guides = backend._build_references(
+        boundary_timeline, target_width, target_height, backend._aligned_h3_length(5.0)
+    )
+    assert len(boundary_videos) == 1 and len(boundary_audio) == 1
+    assert len(boundary_guides) == 2
+    assert [guide["frame_idx"] for guide in boundary_guides] == [0, backend._aligned_h3_length(5.0) - 1]
+    assert all(guide["audio"] is None and guide["image"].shape[0] == 1 for guide in boundary_guides)
     gap_video_track = backend._timeline_video_audio(gap_timeline)
     assert gap_video_track["waveform"].shape[-1] == 10 * 44100
     assert torch.count_nonzero(gap_video_track["waveform"][..., 2 * 44100 : 7 * 44100]) == 0

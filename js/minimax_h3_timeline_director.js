@@ -28,9 +28,9 @@ function installStyles() {
     .m3td-status { color:var(--muted); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .m3td-settings { display:flex; align-items:center; gap:12px; padding:7px 10px; border-bottom:1px solid var(--line); background:#151a22; }
     .m3td-field { display:flex; align-items:center; gap:5px; color:var(--muted); }
-    .m3td-field input { width:72px; height:25px; padding:2px 5px; color:var(--text); background:#0d1118;
+    .m3td-field input,.m3td-field select { width:72px; height:25px; padding:2px 5px; color:var(--text); background:#0d1118;
       border:1px solid #333d50; border-radius:4px; outline:none; user-select:text; }
-    .m3td-field input:focus { border-color:var(--cyan); }
+    .m3td-field input:focus,.m3td-field select:focus { border-color:var(--cyan); }
     .m3td-help { margin-left:auto; color:#9da9bc; }
     .m3td-timeline-shell { display:grid; grid-template-columns:108px minmax(0,1fr); border-bottom:1px solid var(--line); }
     .m3td-labels { background:#151a22; border-right:1px solid var(--line); padding-top:26px; }
@@ -60,6 +60,8 @@ function installStyles() {
     .m3td-clip-ref { position:absolute; right:6px; top:6px; z-index:3; padding:1px 4px; border-radius:3px;
       color:#dffcff; background:#102432dc; font-size:10px; font-weight:700; }
     .m3td-clip-ref.guide { top:24px; color:#78fff5; border:1px solid #43d9d177; }
+    .m3td-clip-ref.edit { top:24px; color:#ffd58a; border:1px solid #f3af4e88; }
+    .m3td-clip-ref.boundary { top:24px; color:#c7b7ff; border:1px solid #987cff88; }
     .m3td-handle { position:absolute; top:0; bottom:0; width:7px; z-index:4; cursor:ew-resize; }
     .m3td-handle.left { left:0; } .m3td-handle.right { right:0; }
     .m3td-audio-clip { position:absolute; top:5px; height:40px; overflow:hidden; border:1px solid #a77636; border-radius:4px;
@@ -80,6 +82,7 @@ function installStyles() {
       border-bottom:1px solid var(--line); color:var(--muted); }
     .m3td-inspector strong { color:#dfe8f7; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .m3td-inspector .m3td-field input { width:66px; }
+    .m3td-inspector .m3td-field select { width:98px; }
     .m3td-preview { display:grid; grid-template-columns:minmax(260px,380px) minmax(0,1fr); gap:10px; min-height:174px;
       padding:8px 10px; border-bottom:1px solid var(--line); background:#0d1118; }
     .m3td-preview-screen { position:relative; display:flex; align-items:center; justify-content:center; height:156px; overflow:hidden;
@@ -121,7 +124,7 @@ const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function emptyState() {
-  return { version: 2, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [] };
+  return { version: 3, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [] };
 }
 
 function normalizeState(raw) {
@@ -134,6 +137,7 @@ function normalizeState(raw) {
     id: c.id || uid(), file: c.file, name: c.name || c.file.split(/[\\/]/).pop(), start: Math.max(0, num(c.start)),
     duration: Math.max(5 / 24, num(c.duration, 5)), trimStart: Math.max(0, num(c.trimStart)),
     sourceDuration: Math.max(0, num(c.sourceDuration, c.duration)), hasAudio: c.hasAudio !== false,
+    referenceMode: ["guide","edit","boundary"].includes(c.referenceMode) ? c.referenceMode : "guide",
     proxy: c.proxy || "",
     peaks: Array.isArray(c.peaks) ? c.peaks : [],
   })) : [];
@@ -235,25 +239,31 @@ class TimelineDirectorUI {
     const guidePieces = [];
     const videoPieces = [];
     let pairedAudioCount = 0;
+    let hasOverlap = false;
     for (const clip of ordered) {
       const overlapStart = Math.max(start, clip.start), overlapEnd = Math.min(end, clipEnd(clip));
       const overlap = overlapEnd - overlapStart;
       if (overlap <= 0) continue;
+      hasOverlap = true;
       const guideFrames = Math.max(1, Math.round(overlap * 24));
-      guidePieces.push({clipId:clip.id, frames:guideFrames, hasAudio:this.state.videoAudioEnabled && !!clip.hasAudio});
-      const outside = [];
-      if (clip.start < start) outside.push(Math.min(clipEnd(clip), start) - clip.start);
-      if (clipEnd(clip) > end) outside.push(clipEnd(clip) - Math.max(clip.start, end));
-      for (let remaining of outside) while (remaining >= 5/24 && videoPieces.length < 3) {
+      const mode = clip.referenceMode || "guide";
+      if (mode === "guide") guidePieces.push({clipId:clip.id, frames:guideFrames, mode, hasAudio:this.state.videoAudioEnabled && !!clip.hasAudio});
+      else if (mode === "boundary") guidePieces.push({clipId:clip.id, frames:Math.min(2,guideFrames), mode, hasAudio:false});
+      const intervals = [];
+      if (mode === "guide") {
+        if (clip.start < start) intervals.push(Math.min(clipEnd(clip), start) - clip.start);
+        if (clipEnd(clip) > end) intervals.push(clipEnd(clip) - Math.max(clip.start, end));
+      } else intervals.push(overlap);
+      for (let remaining of intervals) while (remaining >= 5/24 && videoPieces.length < 3) {
         const seconds = Math.min(15, remaining);
         const hasAudio = this.state.videoAudioEnabled && !!clip.hasAudio;
-        videoPieces.push({clipId: clip.id, seconds, hasAudio});
+        videoPieces.push({clipId: clip.id, seconds, hasAudio, mode});
         if (hasAudio) pairedAudioCount++;
         remaining -= seconds;
       }
     }
     let gapGuideCount = 0;
-    if (!guidePieces.length) {
+    if (!hasOverlap) {
       if (ordered.some(c => clipEnd(c) <= start + epsilon)) gapGuideCount++;
       if (ordered.some(c => c.start >= end - epsilon)) gapGuideCount++;
     }
@@ -470,7 +480,9 @@ class TimelineDirectorUI {
     const left = clip.start * this.zoom, width = Math.max(10, clip.duration * this.zoom);
     const videoIndex = plan.videoPieces.findIndex(piece => piece.clipId === clip.id);
     const guide = plan.guidePieces.find(piece => piece.clipId === clip.id);
-    const refTag = `${videoIndex >= 0 ? `<span class="m3td-clip-ref">&lt;Video ${videoIndex+1}&gt;</span>` : ""}${guide ? `<span class="m3td-clip-ref guide">GUIDE ${guide.frames}帧</span>` : ""}`;
+    const mode = clip.referenceMode || "guide";
+    const modeTag = guide ? `<span class="m3td-clip-ref ${mode === "boundary" ? "boundary" : "guide"}">${mode === "boundary" ? `EDGE ${guide.frames}帧` : `GUIDE ${guide.frames}帧`}</span>` : (mode === "edit" && videoIndex >= 0 ? `<span class="m3td-clip-ref edit">EDIT 可替换</span>` : "");
+    const refTag = `${videoIndex >= 0 ? `<span class="m3td-clip-ref">&lt;Video ${videoIndex+1}&gt;</span>` : ""}${modeTag}`;
     return `<div class="m3td-clip ${clip.id === this.selectedId ? "selected" : ""}" data-id="${esc(clip.id)}" style="left:${left}px;width:${width}px">
       <video muted preload="metadata" src="${esc(viewURL(clip.file))}"></video><div class="m3td-clip-shade"></div>
       <i class="m3td-handle left" data-edge="left"></i><i class="m3td-handle right" data-edge="right"></i>
@@ -705,6 +717,7 @@ class TimelineDirectorUI {
       <label class="m3td-field">起点 <input data-edit="start" type="number" min="0" step="0.04" value="${clip.start.toFixed(2)}"></label>
       <label class="m3td-field">源入点 <input data-edit="trimStart" type="number" min="0" step="0.04" value="${clip.trimStart.toFixed(2)}"></label>
       <label class="m3td-field">片段长度 <input data-edit="duration" type="number" min="0.21" step="0.04" value="${clip.duration.toFixed(2)}"></label>
+      <label class="m3td-field">视频用途 <select data-mode><option value="guide" ${clip.referenceMode === "guide" ? "selected" : ""}>固定Guide</option><option value="edit" ${clip.referenceMode === "edit" ? "selected" : ""}>可编辑参考</option><option value="boundary" ${clip.referenceMode === "boundary" ? "selected" : ""}>仅固定边界</option></select></label>
       <span>${clip.hasAudio ? (this.state.videoAudioEnabled ? "✓ 原声参考开启" : "⊘ 原声参考关闭") : "— 无原声"}</span>`;
     for (const input of this.inspector.querySelectorAll("input[data-edit]")) input.onchange = () => {
       const key=input.dataset.edit, value=Math.max(0,num(input.value));
@@ -712,6 +725,11 @@ class TimelineDirectorUI {
       else if (key === "trimStart") { clip.trimStart=clamp(value,0,Math.max(0,clip.sourceDuration-5/24)); clip.duration=Math.min(clip.duration,clip.sourceDuration-clip.trimStart); }
       else clip.start=value;
       this.sync(); this.render();
+    };
+    this.inspector.querySelector("select[data-mode]").onchange = event => {
+      clip.referenceMode=event.target.value;
+      this.setStatus(clip.referenceMode === "edit" ? "可编辑参考：不固定原人物" : (clip.referenceMode === "boundary" ? "仅固定首尾边界帧" : "固定Guide：逐帧保留原画面"));
+      this.sync();this.render();
     };
   }
 
@@ -729,11 +747,13 @@ class TimelineDirectorUI {
   renderTags() {
     const plan=this.referencePlan();
     const independentPictures=this.state.images.length;
-    const videoText=plan.videoPieces.length ? `区外参考视频 <Video 1..${plan.videoPieces.length}>` : "无普通视频参考";
+    const videoText=plan.videoPieces.length ? `普通参考视频 <Video 1..${plan.videoPieces.length}>` : "无普通视频参考";
     const audioTotal=plan.pairedAudioCount+this.state.audios.length;
     const pictureText=independentPictures ? `独立图片 <Picture 1..${independentPictures}>` : "无独立图片";
     const guideFrames=plan.guidePieces.reduce((sum,item)=>sum+item.frames,0);
-    const guideText=plan.guidePieces.length ? `原生固定 Guide ${plan.guidePieces.length}段/${guideFrames}帧` : (plan.gapGuideCount ? `空隙首尾 Guide ${plan.gapGuideCount}帧` : "无固定 Guide");
+    const fullGuides=plan.guidePieces.filter(item=>item.mode==="guide").length;
+    const edgeGuides=plan.guidePieces.filter(item=>item.mode==="boundary").length;
+    const guideText=plan.guidePieces.length ? `${fullGuides ? `原生固定 ${fullGuides}段` : ""}${fullGuides&&edgeGuides ? " + " : ""}${edgeGuides ? `边界固定 ${edgeGuides}段` : ""}/${guideFrames}帧` : (plan.gapGuideCount ? `空隙首尾 Guide ${plan.gapGuideCount}帧` : "无固定 Guide");
     const standaloneAudio=this.state.audios.length ? `独立音频 <Audio 1..${this.state.audios.length}>` : "无独立音频";
     const pairedAudio=!this.state.videoAudioEnabled ? "视频原声：参考已关闭" : (plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签");
     this.root.querySelector(".m3td-tags").textContent = `${pictureText} · ${guideText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
@@ -793,7 +813,7 @@ class TimelineDirectorUI {
         if(!info.hasVideo)throw new Error("上传的文件不包含视频轨");
         const start=this.state.videoClips.reduce((m,c)=>Math.max(m,c.start+c.duration),0);
         const duration=Math.max(5/24,num(info.duration,5));
-        const clip={id:uid(),file:info.filename,name:file.name,start,duration,trimStart:0,sourceDuration:duration,hasAudio:!!info.hasAudio,peaks:info.peaks||[],proxy:""};
+        const clip={id:uid(),file:info.filename,name:file.name,start,duration,trimStart:0,sourceDuration:duration,hasAudio:!!info.hasAudio,referenceMode:"guide",peaks:info.peaks||[],proxy:""};
         this.state.videoClips.push(clip);this.selectedId=clip.id;
       }else if(kind==="image")this.state.images.push({id:uid(),file:info.filename,name:file.name,width:info.width||0,height:info.height||0});
       else { if(!info.hasAudio)throw new Error("上传的文件不包含音频轨"); this.state.audios.push({id:uid(),file:info.filename,name:file.name,duration:info.duration||0,trimStart:0}); }

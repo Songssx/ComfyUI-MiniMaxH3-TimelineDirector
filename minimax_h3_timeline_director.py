@@ -474,6 +474,11 @@ def _source_time(clip: dict[str, Any], timeline_second: float) -> float:
     return max(0.0, _float(clip.get("trimStart")) + timeline_second - _float(clip.get("start")))
 
 
+def _reference_mode(clip: dict[str, Any]) -> str:
+    mode = str(clip.get("referenceMode") or "guide")
+    return mode if mode in {"guide", "edit", "boundary"} else "guide"
+
+
 def _pick_gap_guides(clips: list[dict[str, Any]], selection_start: float, selection_end: float) -> list[tuple[dict[str, Any], float, int, str]]:
     """Choose still guides only when the selection is a true empty gap."""
 
@@ -557,6 +562,23 @@ def _build_references(
             _safe_input_path(str(asset["file"])), target_width, target_height
         )
 
+    def append_video_reference(clip: dict[str, Any], path: Path, timeline_start: float, duration: float) -> None:
+        source_start = _source_time(clip, timeline_start)
+        for piece_start, piece_duration in _windows(source_start, duration):
+            if len(ref_videos) >= MAX_REF_VIDEOS:
+                break
+            reference_frames = _decode_video(
+                path, piece_start, piece_duration, FPS, target_width, target_height
+            )
+            if reference_frames is None or reference_frames.shape[0] < 5:
+                continue
+            index = len(ref_videos)
+            ref_videos[f"ref_video_{index}"] = reference_frames
+            if video_audio_enabled and clip.get("hasAudio", True):
+                audio = _decode_audio(path, piece_start, piece_duration)
+                if audio is not None:
+                    ref_video_audios[f"ref_video_audio_{index}"] = audio
+
     # A clip crossing the generated range is split deliberately: the overlap is
     # a hard guide at its target position; only the source context outside the
     # range is a prompt-addressable Video reference.
@@ -568,6 +590,37 @@ def _build_references(
         if overlap_duration <= 0:
             continue
         path = _safe_input_path(str(clip["file"]))
+        mode = _reference_mode(clip)
+
+        if mode in {"edit", "boundary"}:
+            append_video_reference(clip, path, overlap_start, overlap_duration)
+            if mode == "boundary":
+                first_idx = max(0, round((overlap_start - selection_start) * FPS))
+                last_idx = min(target_length - 1, max(first_idx, round((overlap_end - selection_start) * FPS) - 1))
+                if abs(overlap_start - selection_start) <= 0.5 / FPS:
+                    first_idx = 0
+                if abs(overlap_end - selection_end) <= 0.5 / FPS:
+                    last_idx = target_length - 1
+                first_frame = _decode_frame(
+                    path, _source_time(clip, overlap_start), target_width, target_height
+                )
+                if first_frame is not None:
+                    guides.append({
+                        "image": first_frame, "audio": None, "frame_idx": first_idx,
+                        "kind": "boundary-start", "clip_id": clip.get("id"), "source_frames": 1,
+                    })
+                if last_idx != first_idx:
+                    last_frame = _decode_frame(
+                        path, _source_time(clip, max(overlap_start, overlap_end - 1.0 / FPS)),
+                        target_width, target_height,
+                    )
+                    if last_frame is not None:
+                        guides.append({
+                            "image": last_frame, "audio": None, "frame_idx": last_idx,
+                            "kind": "boundary-end", "clip_id": clip.get("id"), "source_frames": 1,
+                        })
+            continue
+
         total_frames = min(max(1, round(overlap_duration * FPS)), target_length)
         guide_start_frame = max(0, round((overlap_start - selection_start) * FPS))
         if abs(overlap_start - selection_start) <= 0.5 / FPS:
@@ -615,21 +668,7 @@ def _build_references(
         if clip_end > selection_end:
             outside_intervals.append((max(clip_start, selection_end), clip_end - max(clip_start, selection_end)))
         for timeline_start, outside_duration in outside_intervals:
-            source_start = _source_time(clip, timeline_start)
-            for piece_start, piece_duration in _windows(source_start, outside_duration):
-                if len(ref_videos) >= MAX_REF_VIDEOS:
-                    break
-                reference_frames = _decode_video(
-                    path, piece_start, piece_duration, FPS, target_width, target_height
-                )
-                if reference_frames is None or reference_frames.shape[0] < 5:
-                    continue
-                index = len(ref_videos)
-                ref_videos[f"ref_video_{index}"] = reference_frames
-                if video_audio_enabled and clip.get("hasAudio", True):
-                    audio = _decode_audio(path, piece_start, piece_duration)
-                    if audio is not None:
-                        ref_video_audios[f"ref_video_audio_{index}"] = audio
+            append_video_reference(clip, path, timeline_start, outside_duration)
             if len(ref_videos) >= MAX_REF_VIDEOS:
                 break
 
@@ -843,7 +882,7 @@ class MiniMaxH3TimelineDirector(io.ComfyNode):
             display_name="MiniMax H3 时间线导演台",
             description=(
                 "在可编辑时间线中组装 H3 参考素材；与生成区重叠的视频使用原生 Add Guide "
-                "固定到目标帧位置，跨越边缘的区外片段作为普通视频参考，空隙自动固定首尾帧。"
+                "固定到目标帧位置，也可逐片段切换为可编辑视频参考或仅固定边界；空隙自动固定首尾帧。"
             ),
             category="model/conditioning/minimax",
             inputs=[

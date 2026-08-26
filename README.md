@@ -39,6 +39,8 @@ Reference-to-video workflows become difficult to manage when they contain severa
 - **Bound video soundtracks** — original audio follows every move, trim, and split operation.
 - **Optional video-audio reference** — disable all paired video soundtracks while keeping the selected reference videos active.
 - **Native fixed guides** — video content overlapping the cyan range is anchored at its exact generated-frame position through ComfyUI's `MiniMaxH3AddGuide`.
+- **Per-clip reference purpose** — choose `Fixed Guide`, `Editable Reference`, or `Boundary Only` independently for every video clip.
+- **Character-replacement mode** — `Editable Reference` sends the overlap as `<Video N>` without hard-locking the original person's latent frames.
 - **Context references** — portions of a crossing clip outside the cyan range remain ordinary prompt-addressable `<Video N>` references.
 - **Native gap bridging** — a range placed between clips anchors the left final frame and right first frame as generated first/last-frame guides.
 - **One-click gap matching** — fit the cyan range exactly to the nearest gap.
@@ -118,7 +120,13 @@ Double-clicking an empty timeline gap also matches the cyan range to that gap.
 
 ### Precision inspector
 
-Select a video clip to edit its timeline start, source in-point, clip duration, and original-audio binding state.
+Select a video clip to edit its timeline start, source in-point, clip duration, original-audio binding state, and video purpose:
+
+- **Fixed Guide**: hard-anchor every overlapping frame; best for exact continuation and preservation.
+- **Editable Reference**: use the overlap as `<Video N>` without a guide; best for character, clothing, and style replacement.
+- **Boundary Only**: use the overlap as `<Video N>` and anchor only its first/last frames; useful for transitions, but those two source frames remain fixed.
+
+Existing workflows default to **Fixed Guide** for backward compatibility.
 
 ### Low-resolution preview
 
@@ -198,7 +206,7 @@ Use **Match Nearest Gap** for exact alignment.
 
 ### Multiple clips and long intervals
 
-Each overlap becomes a fixed guide at its generated-frame position. Only source context outside crossed selection edges is split into ordinary reference-video windows of at most 15 seconds, up to three references.
+In **Fixed Guide** mode, each overlap becomes a fixed guide and only context outside crossed edges becomes an ordinary video reference. In **Editable Reference** and **Boundary Only** modes, the overlap itself becomes `<Video N>`. Ordinary references are split into windows of at most 15 seconds, up to three references.
 
 ## Reference numbering
 
