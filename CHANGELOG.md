@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 - Per-clip video-purpose selector with `Fixed Guide`, `Editable Reference`, and `Boundary Only` modes.
 - Editable-reference mode for character, clothing, and style replacement: the selected overlap becomes `<Video N>` without any hard guide.
 - Boundary-only mode keeps the overlap as `<Video N>` while anchoring only its first and last frames.
+- Drag-and-drop reordering for standalone image and audio bins; prompt ordinals and backend `ref_image_N` / `ref_audio_N` inputs update immediately.
 
 ### Compatibility
 

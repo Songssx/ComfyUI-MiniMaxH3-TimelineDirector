@@ -145,6 +145,7 @@ Final H3 conditioning always uses the original source video. Its original soundt
 
 - Standalone images are shown as `<Picture 1>`, `<Picture 2>`, and so on.
 - Standalone audio is shown as `<Audio 1>`, `<Audio 2>`, and so on.
+- Drag cards left or right to reorder them; visible labels and actual H3 input order update together.
 - Removing an item immediately compacts the numbering.
 - Clearing a bin and uploading again restarts its numbering from 1.
 

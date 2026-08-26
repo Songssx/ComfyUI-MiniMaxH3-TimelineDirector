@@ -101,7 +101,11 @@ function installStyles() {
       background:#202633; border-bottom:1px solid #30394a; }
     .m3td-bin-list { height:116px; overflow:auto; padding:5px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px; }
     .m3td-asset { position:relative; width:82px; height:50px; border:1px solid #394459; border-radius:4px; overflow:hidden;
-      background:#242c39; cursor:pointer; }
+      background:#242c39; cursor:grab; }
+    .m3td-asset:active { cursor:grabbing; }
+    .m3td-asset.dragging { opacity:.38; }
+    .m3td-asset.drop-before { box-shadow:-3px 0 0 var(--cyan); }
+    .m3td-asset.drop-after { box-shadow:3px 0 0 var(--cyan); }
     .m3td-asset img { width:100%; height:100%; object-fit:cover; }
     .m3td-asset.audio { width:120px; color:#e0c28e; padding:7px 20px 5px 7px; }
     .m3td-asset-tag { position:absolute; left:3px; top:2px; z-index:2; padding:1px 3px; border-radius:3px;
@@ -122,6 +126,16 @@ const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice
 const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function reorderById(items, draggedId, targetId, after = false) {
+  const sourceIndex = items.findIndex(item => item.id === draggedId);
+  if (sourceIndex < 0 || draggedId === targetId) return false;
+  const [moved] = items.splice(sourceIndex, 1);
+  const targetIndex = items.findIndex(item => item.id === targetId);
+  if (targetIndex < 0) { items.splice(sourceIndex, 0, moved); return false; }
+  items.splice(targetIndex + (after ? 1 : 0), 0, moved);
+  return true;
+}
 
 function emptyState() {
   return { version: 3, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [] };
@@ -355,8 +369,8 @@ class TimelineDirectorUI {
         </div>
       </div>
       <div class="m3td-assets">
-        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考图片（0/9）</span><span>&lt;Picture i&gt;</span></div><div class="m3td-bin-list" data-bin="images"></div></section>
-        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考音频（0/3）</span><span>&lt;Audio j&gt;</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
+        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考图片（0/9）</span><span>拖拽排序 · &lt;Picture i&gt;</span></div><div class="m3td-bin-list" data-bin="images"></div></section>
+        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考音频（0/3）</span><span>拖拽排序 · &lt;Audio j&gt;</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
       </div>
       <div class="m3td-foot"><strong>提示词编号：</strong><span class="m3td-tags"></span></div>
       <input hidden data-upload="video" type="file" accept="video/*">
@@ -738,10 +752,38 @@ class TimelineDirectorUI {
     const audioBin = this.root.querySelector('[data-bin="audios"]');
     this.root.querySelectorAll(".m3td-bin-title span:first-child")[0].textContent = `独立参考图片（${this.state.images.length}/9）`;
     this.root.querySelectorAll(".m3td-bin-title span:first-child")[1].textContent = `独立参考音频（${this.state.audios.length}/3）`;
-    imageBin.innerHTML = this.state.images.map((a,i) => `<div class="m3td-asset"><img src="${esc(viewURL(a.file))}"><span class="m3td-asset-tag">&lt;Picture ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button class="m3td-asset-x" data-remove-image="${esc(a.id)}">×</button></div>`).join("");
-    audioBin.innerHTML = this.state.audios.map((a,i) => `<div class="m3td-asset audio"><span class="m3td-asset-tag">&lt;Audio ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button class="m3td-asset-x" data-remove-audio="${esc(a.id)}">×</button></div>`).join("");
+    imageBin.innerHTML = this.state.images.map((a,i) => `<div class="m3td-asset" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="images" title="拖拽调整参考顺序"><img draggable="false" src="${esc(viewURL(a.file))}"><span class="m3td-asset-tag">&lt;Picture ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-image="${esc(a.id)}">×</button></div>`).join("");
+    audioBin.innerHTML = this.state.audios.map((a,i) => `<div class="m3td-asset audio" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="audios" title="拖拽调整参考顺序"><span class="m3td-asset-tag">&lt;Audio ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-audio="${esc(a.id)}">×</button></div>`).join("");
     for (const b of imageBin.querySelectorAll("[data-remove-image]")) b.onclick=e=>{e.stopPropagation();this.state.images=this.state.images.filter(a=>a.id!==b.dataset.removeImage);this.sync();this.render();};
     for (const b of audioBin.querySelectorAll("[data-remove-audio]")) b.onclick=e=>{e.stopPropagation();this.state.audios=this.state.audios.filter(a=>a.id!==b.dataset.removeAudio);this.sync();this.render();};
+    this.bindAssetReorder(imageBin,"images","图片");
+    this.bindAssetReorder(audioBin,"audios","音频");
+  }
+
+  bindAssetReorder(bin, kind, label) {
+    const clearMarkers=()=>{for(const card of bin.querySelectorAll(".m3td-asset"))card.classList.remove("dragging","drop-before","drop-after");};
+    for(const card of bin.querySelectorAll(".m3td-asset")){
+      card.ondragstart=e=>{
+        if(e.target.closest?.("button")){e.preventDefault();return;}
+        this.assetDrag={kind,id:card.dataset.assetId};card.classList.add("dragging");
+        e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",card.dataset.assetId);
+      };
+      card.ondragover=e=>{
+        if(!this.assetDrag||this.assetDrag.kind!==kind||this.assetDrag.id===card.dataset.assetId)return;
+        e.preventDefault();e.dataTransfer.dropEffect="move";
+        const rect=card.getBoundingClientRect(),after=e.clientX>=rect.left+rect.width/2;
+        for(const other of bin.querySelectorAll(".m3td-asset"))other.classList.remove("drop-before","drop-after");
+        card.classList.add(after?"drop-after":"drop-before");
+      };
+      card.ondrop=e=>{
+        if(!this.assetDrag||this.assetDrag.kind!==kind)return;
+        e.preventDefault();const rect=card.getBoundingClientRect(),after=e.clientX>=rect.left+rect.width/2;
+        const changed=reorderById(this.state[kind],this.assetDrag.id,card.dataset.assetId,after);
+        this.assetDrag=null;clearMarkers();
+        if(changed){this.sync();this.render();this.setStatus(`${label}参考顺序已更新`);}
+      };
+      card.ondragend=()=>{this.assetDrag=null;clearMarkers();};
+    }
   }
 
   renderTags() {
