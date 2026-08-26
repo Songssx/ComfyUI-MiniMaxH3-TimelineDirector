@@ -18,6 +18,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 - Video overlap inside the cyan range is now hard-anchored as a guide; only source context outside crossed edges becomes an ordinary `<Video N>` reference.
 - Empty gaps now anchor the nearest left/right stills at the generated first/last frame without consuming `<Picture>` slots.
 - Multi-frame guides follow H3's official `5 + 17n` constraint; legal batches plus single-frame guides preserve every source frame (24 frames become `22 + 1 + 1`).
+- Long fixed overlaps are decoded in bounded 15-second windows at the node canvas resolution to avoid materializing an oversized source-frame tensor.
 
 ## [0.1.1] - 2026-08-24
 
