@@ -15,7 +15,7 @@
 
 An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference to Video** pipeline.
 
-Instead of preparing every reference video, soundtrack, boundary frame, image, and audio clip in separate nodes, the Timeline Director brings them into one visual editing surface. Place and trim video clips, scrub a low-resolution preview, define the cyan generation range, and let the node assemble the exact H3 references at queue time.
+Instead of preparing every reference video, soundtrack, fixed guide, image, and audio clip in separate nodes, the Timeline Director brings them into one visual editing surface. Place and trim video clips, scrub a low-resolution preview, define the cyan generation range, and let the node assemble the exact H3 references and guides at queue time.
 
 > This project is designed for a recent ComfyUI build that includes the native `MiniMaxH3ReferenceToVideo` implementation.
 
@@ -38,9 +38,9 @@ Reference-to-video workflows become difficult to manage when they contain severa
 - **Editable multi-clip timeline** — move, trim, split, delete, and precisely position video clips.
 - **Bound video soundtracks** — original audio follows every move, trim, and split operation.
 - **Optional video-audio reference** — disable all paired video soundtracks while keeping the selected reference videos active.
-- **Range-aware reference extraction** — only the part of a video overlapping the cyan range is decoded and sent to H3.
-- **Automatic boundary frames** — extracts visual context immediately outside the selected range.
-- **Gap bridging** — a range placed between two clips uses the left clip's final frame and the right clip's first frame.
+- **Native fixed guides** — video content overlapping the cyan range is anchored at its exact generated-frame position through ComfyUI's `MiniMaxH3AddGuide`.
+- **Context references** — portions of a crossing clip outside the cyan range remain ordinary prompt-addressable `<Video N>` references.
+- **Native gap bridging** — a range placed between clips anchors the left final frame and right first frame as generated first/last-frame guides.
 - **One-click gap matching** — fit the cyan range exactly to the nearest gap.
 - **Edge snapping** — clips, trim handles, the cyan range, and the red playhead snap to nearby edges.
 - **Low-resolution monitoring** — cached, silent proxies up to `480×270` at `12 fps` make scrubbing responsive even with large sources.
@@ -52,7 +52,7 @@ Reference-to-video workflows become difficult to manage when they contain severa
 
 ## Requirements
 
-- A recent ComfyUI version containing native MiniMax H3 nodes.
+- A recent ComfyUI version containing `MiniMaxH3AddGuide` (ComfyUI PR #15439) and the native MiniMax H3 nodes.
 - MiniMax H3 Ref2VA-compatible diffusion model, text encoder, video VAE, and audio VAE.
 - Python 3.10 or newer, as required by the package metadata.
 - FFmpeg available through ComfyUI's bundled `imageio-ffmpeg` package for preview-proxy creation.
@@ -167,53 +167,54 @@ If no usable audio exists, the output remains a valid silent ComfyUI `AUDIO` val
 
 ## How the cyan range becomes H3 references
 
-### Partial overlap with a video
+### Edge overlap with a video
 
-If the range covers only part of a video clip, only that overlapping source interval is decoded. Its matching original-audio interval is extracted with the same timing.
+The source portion inside the cyan range becomes a native fixed guide at the same generated-frame offset. The source portion outside the range becomes an ordinary `<Video N>` reference. When video-audio reference is enabled, each part keeps its matching soundtrack role.
 
 Example: a 10-second clip occupies `0–10s`, while the cyan range is `2–7s`.
 
 ![Partial video range selection](docs/images/partial-overlap.webp)
 
-- `<Video 1>` receives the source interval `2–7s` at 24 fps.
-- The paired soundtrack receives the same five-second interval.
-- A frame immediately before 2 seconds and a frame immediately after 7 seconds are prepared as boundary pictures.
+- source `2–7s` is fixed inside the generated video by a native guide;
+- source `0–2s` and `7–10s` become context video references (up to H3's three-video limit);
+- no automatic guide consumes a `<Picture N>` ordinal.
 
 The video-audio switch affects H3 reference conditioning only. The `Video Soundtrack Mix` output remains available for downstream workflow use.
 
 ### Selection contains the whole video
 
-If the cyan range fully contains a clip, or exactly matches both clip edges, that complete video is already the reference. No redundant automatic boundary frame is created. Boundary frames are reserved for ranges that cut through a clip edge or bridge an empty gap.
+The overlapping clip is fixed at its timeline-relative frame position. A multi-frame H3 guide must have `5 + 17n` frames, so the director chains legal `5, 22, 39…`-frame batches plus single-frame guides instead of dropping the remainder. A one-second 24-frame overlap is therefore fixed completely as `22 + 1 + 1` frames.
 
 ### Empty gap between clips
 
 If the cyan range is entirely inside an empty gap:
 
 - no fake blank video reference is created;
-- the left clip's final frame becomes the left boundary picture;
-- the right clip's first frame becomes the right boundary picture.
+- the left clip's final frame is anchored at generated frame `0`;
+- the right clip's first frame is anchored at the generated final frame;
+- no ordinary video reference or automatic `<Picture>` is created.
 
 Use **Match Nearest Gap** for exact alignment.
 
 ### Multiple clips and long intervals
 
-Overlapping timeline clips are ordered by timeline start. Each selected interval becomes a reference video until H3's limit is reached. Intervals longer than 15 seconds are split into windows of at most 15 seconds, up to three references.
+Each overlap becomes a fixed guide at its generated-frame position. Only source context outside crossed selection edges is split into ordinary reference-video windows of at most 15 seconds, up to three references.
 
 ## Reference numbering
 
 The UI and actual H3 presentation order use the same policy:
 
 1. standalone images: `<Picture 1..N>`;
-2. automatic boundary frames: the next available `<Picture>` numbers;
+2. native guides: no prompt ordinal;
 3. standalone audio: `<Audio 1..N>`;
-4. paired video soundtracks: the next available `<Audio>` numbers;
-5. selected videos: `<Video 1..N>`.
+4. ordinary context-video soundtracks: the next available `<Audio>` numbers;
+5. context videos: `<Video 1..N>`.
 
-Example with one standalone image, two boundaries, two standalone audios, and one selected video with sound:
+Example with one standalone image, two native guides, two standalone audios, and one context video with sound:
 
 ```text
 Standalone image:       <Picture 1>
-Automatic boundaries:  <Picture 2>, <Picture 3>
+Native guides:         no Picture/Video ordinal
 Standalone audio:       <Audio 1>, <Audio 2>
 Video soundtrack:       <Audio 3>
 Selected video:         <Video 1>
@@ -234,7 +235,7 @@ The cyan range length and `generation_seconds` are synchronized in both directio
 
 ## Resolution and memory protection
 
-During decoding, every selected video frame is immediately resized and center-cropped to the node's `width × height`; standalone images and automatic boundary frames follow the same policy.
+During decoding, every selected video or guide frame is immediately resized and center-cropped to the node's `width × height`; standalone images follow the same protection policy.
 
 This protects system memory because a full 4K/8K interval is never accumulated at source resolution, and protects GPU memory because the video VAE receives bounded reference dimensions. Source files on disk are never modified.
 
@@ -264,7 +265,7 @@ This protects system memory because a full 4K/8K interval is never accumulated a
 - Reference videos are sampled at 24 fps.
 - Tags use `<Picture i>`, `<Video k>`, and `<Audio j>`.
 
-If standalone images fill all nine slots, automatic boundary frames cannot be added.
+Native guides do not consume any of the nine standalone-image slots.
 
 ## Media storage and cache
 
@@ -314,7 +315,7 @@ Restore the referenced files under ComfyUI's input directory or upload them agai
 
 ## Testing
 
-`tests/smoke_media_pipeline.py` verifies partial extraction, audio sample counts, multi-audio concatenation, independent-first numbering, boundary frames, gap bridging, silent gaps, merged timeline audio, H3 frame alignment, target-resolution protection, and preview-proxy properties.
+`tests/smoke_media_pipeline.py` verifies native guide frame/index mapping, outside-context extraction, audio sample counts, independent-first numbering, gap guides, silent gaps, merged timeline audio, H3 frame alignment, target-resolution protection, and preview-proxy properties.
 
 Run it from the ComfyUI directory with ComfyUI's Python:
 

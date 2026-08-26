@@ -1,13 +1,12 @@
 """Backend for the MiniMax H3 Timeline Director node.
 
 The UI stores an edit decision list (EDL) in ``timeline_data``.  At queue time
-this module resolves the current generation selection into the exact inputs of
-ComfyUI's official ``MiniMaxH3ReferenceToVideo`` node:
+this module resolves the current generation selection into H3 references and
+native ``MiniMaxH3AddGuide`` keyframe guides:
 
-* selected portions of timeline video clips become reference videos;
-* their source soundtracks become index-paired reference-video audio;
-* frames immediately outside the selection become boundary reference images;
-* a gap between two clips uses the left clip's last and right clip's first frame;
+* source portions outside a crossed selection edge become reference videos;
+* the portions overlapping the generated range become fixed guide clips;
+* a gap between two clips uses native first/last single-frame guides;
 * standalone image and audio assets are forwarded as references.
 """
 
@@ -475,41 +474,47 @@ def _source_time(clip: dict[str, Any], timeline_second: float) -> float:
     return max(0.0, _float(clip.get("trimStart")) + timeline_second - _float(clip.get("start")))
 
 
-def _pick_boundaries(clips: list[dict[str, Any]], selection_start: float, selection_end: float) -> list[tuple[dict[str, Any], float, str]]:
-    """Choose the visual context immediately outside both selection edges."""
+def _pick_gap_guides(clips: list[dict[str, Any]], selection_start: float, selection_end: float) -> list[tuple[dict[str, Any], float, int, str]]:
+    """Choose still guides only when the selection is a true empty gap."""
 
     if not clips:
         return []
     epsilon = 1.0 / FPS
-    tolerance = 0.5 / FPS
     ordered = sorted(clips, key=lambda clip: (_float(clip.get("start")), _clip_end(clip)))
-    result: list[tuple[dict[str, Any], float, str]] = []
+    if any(min(selection_end, _clip_end(c)) - max(selection_start, _float(c.get("start"))) > epsilon for c in ordered):
+        return []
+    result: list[tuple[dict[str, Any], float, int, str]] = []
+    left = [c for c in ordered if _clip_end(c) <= selection_start + epsilon]
+    if left:
+        clip = max(left, key=_clip_end)
+        result.append((clip, max(_float(clip.get("start")), _clip_end(clip) - epsilon), 0, "gap-start"))
+    right = [c for c in ordered if _float(c.get("start")) >= selection_end - epsilon]
+    if right:
+        clip = min(right, key=lambda c: _float(c.get("start")))
+        result.append((clip, _float(clip.get("start")), -1, "gap-end"))
+    return result
 
-    containing_start = next((
-        c for c in ordered
-        if _float(c.get("start")) < selection_start - tolerance
-        and selection_start < _clip_end(c) - tolerance
-    ), None)
-    if containing_start:
-        result.append((containing_start, max(_float(containing_start.get("start")), selection_start - epsilon), "selection-in"))
-    else:
-        left = [c for c in ordered if _clip_end(c) <= selection_start + epsilon]
-        if left:
-            clip = max(left, key=_clip_end)
-            result.append((clip, max(_float(clip.get("start")), _clip_end(clip) - epsilon), "left-gap"))
 
-    containing_end = next((
-        c for c in ordered
-        if _float(c.get("start")) + tolerance < selection_end
-        and selection_end < _clip_end(c) - tolerance
-    ), None)
-    if containing_end:
-        result.append((containing_end, min(_clip_end(containing_end) - epsilon, selection_end + epsilon), "selection-out"))
-    else:
-        right = [c for c in ordered if _float(c.get("start")) >= selection_end - epsilon]
-        if right:
-            clip = min(right, key=lambda c: _float(c.get("start")))
-            result.append((clip, _float(clip.get("start")), "right-gap"))
+def _valid_guide_frame_count(frame_count: int) -> int:
+    """Mirror MiniMaxH3AddGuide's legal 1 or 17*k+5 frame rule."""
+
+    frame_count = max(1, int(frame_count))
+    if frame_count < 5:
+        return 1
+    return frame_count - ((frame_count - 5) % 17)
+
+
+def _guide_frame_slices(frame_count: int) -> list[tuple[int, int]]:
+    """Split every source frame into legal native guides without dropping tails."""
+
+    result: list[tuple[int, int]] = []
+    offset = 0
+    remaining = max(0, int(frame_count))
+    while remaining:
+        count = _valid_guide_frame_count(remaining)
+        result.append((offset, count))
+        offset += count
+        remaining -= count
     return result
 
 
@@ -524,22 +529,25 @@ def _parse_timeline(value: str) -> dict[str, Any]:
 
 
 def _build_references(
-    timeline: dict[str, Any], target_width: Any = None, target_height: Any = None
-) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    timeline: dict[str, Any], target_width: Any = None, target_height: Any = None,
+    target_length: int | None = None,
+) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor], dict[str, dict[str, Any]], dict[str, dict[str, Any]], list[dict[str, Any]]]:
     clips = [c for c in timeline.get("videoClips", []) if isinstance(c, dict) and c.get("file")]
     selection = timeline.get("selection") or {}
     selection_start = max(0.0, _float(selection.get("start")))
     selection_duration = max(MIN_REF_VIDEO_SECONDS, _float(selection.get("duration"), 5.0))
     selection_end = selection_start + selection_duration
+    target_length = int(target_length or _aligned_h3_length(selection_duration))
 
     ref_images: dict[str, torch.Tensor] = {}
     ref_videos: dict[str, torch.Tensor] = {}
     ref_video_audios: dict[str, dict[str, Any]] = {}
     ref_audios: dict[str, dict[str, Any]] = {}
+    guides: list[dict[str, Any]] = []
     video_audio_enabled = timeline.get("videoAudioEnabled", True) is not False
 
-    # User-uploaded bins own their visible ordinal space: independent images
-    # always begin at <Picture 1>. Automatic boundary frames follow them.
+    # User-uploaded bins own their visible ordinal space. Native guides are not
+    # prompt-labelled Picture references and therefore never change ordinals.
     for asset in timeline.get("images", []):
         if len(ref_images) >= MAX_REF_IMAGES:
             break
@@ -549,42 +557,91 @@ def _build_references(
             _safe_input_path(str(asset["file"])), target_width, target_height
         )
 
-    for clip, timeline_second, _kind in _pick_boundaries(clips, selection_start, selection_end):
-        if len(ref_images) >= MAX_REF_IMAGES:
-            break
-        path = _safe_input_path(str(clip["file"]))
-        frame = _decode_frame(
-            path, _source_time(clip, timeline_second), target_width, target_height
-        )
-        if frame is not None:
-            ref_images[f"ref_image_{len(ref_images)}"] = frame
-
-    # Each selected source interval is a reference video.  Longer intervals are
-    # split into H3's 15-second reference window, up to the official limit of 3.
+    # A clip crossing the generated range is split deliberately: the overlap is
+    # a hard guide at its target position; only the source context outside the
+    # range is a prompt-addressable Video reference.
     for clip in sorted(clips, key=lambda c: _float(c.get("start"))):
-        if len(ref_videos) >= MAX_REF_VIDEOS:
-            break
+        clip_start, clip_end = _float(clip.get("start")), _clip_end(clip)
         overlap_start = max(selection_start, _float(clip.get("start")))
-        overlap_end = min(selection_end, _clip_end(clip))
+        overlap_end = min(selection_end, clip_end)
         overlap_duration = overlap_end - overlap_start
-        if overlap_duration < MIN_REF_VIDEO_SECONDS:
+        if overlap_duration <= 0:
             continue
         path = _safe_input_path(str(clip["file"]))
-        source_start = _source_time(clip, overlap_start)
-        for piece_start, piece_duration in _windows(source_start, overlap_duration):
+        total_frames = min(max(1, round(overlap_duration * FPS)), target_length)
+        guide_start_frame = max(0, round((overlap_start - selection_start) * FPS))
+        if abs(overlap_start - selection_start) <= 0.5 / FPS:
+            guide_start_frame = 0
+        elif abs(overlap_end - selection_end) <= 0.5 / FPS:
+            guide_start_frame = max(0, target_length - total_frames)
+        guide_start_frame = min(guide_start_frame, max(0, target_length - total_frames))
+
+        # Decode long overlaps in bounded windows. This preserves the existing
+        # resolution protection without ever materializing a 150-second tensor.
+        decoded_frames = 0
+        while decoded_frames < total_frames:
+            requested_frames = min(
+                round(MAX_REF_VIDEO_SECONDS * FPS), total_frames - decoded_frames
+            )
+            frames = _decode_video(
+                path, _source_time(clip, overlap_start) + decoded_frames / FPS,
+                requested_frames / FPS, FPS, target_width, target_height,
+            )
+            if frames is None or not frames.shape[0]:
+                break
+            chunk_frames = min(int(frames.shape[0]), requested_frames)
+            frames = frames[:chunk_frames]
+            for slice_offset, slice_count in _guide_frame_slices(chunk_frames):
+                guide_audio = None
+                if video_audio_enabled and clip.get("hasAudio", True):
+                    guide_audio = _decode_audio(
+                        path, _source_time(clip, overlap_start) + (decoded_frames + slice_offset) / FPS,
+                        slice_count / FPS,
+                    )
+                guides.append({
+                    "image": frames[slice_offset:slice_offset + slice_count],
+                    "audio": guide_audio,
+                    "frame_idx": guide_start_frame + decoded_frames + slice_offset,
+                    "kind": "video", "clip_id": clip.get("id"),
+                    "source_frames": slice_count,
+                })
+            decoded_frames += chunk_frames
+            if chunk_frames < requested_frames:
+                break
+
+        outside_intervals: list[tuple[float, float]] = []
+        if clip_start < selection_start:
+            outside_intervals.append((clip_start, min(clip_end, selection_start) - clip_start))
+        if clip_end > selection_end:
+            outside_intervals.append((max(clip_start, selection_end), clip_end - max(clip_start, selection_end)))
+        for timeline_start, outside_duration in outside_intervals:
+            source_start = _source_time(clip, timeline_start)
+            for piece_start, piece_duration in _windows(source_start, outside_duration):
+                if len(ref_videos) >= MAX_REF_VIDEOS:
+                    break
+                reference_frames = _decode_video(
+                    path, piece_start, piece_duration, FPS, target_width, target_height
+                )
+                if reference_frames is None or reference_frames.shape[0] < 5:
+                    continue
+                index = len(ref_videos)
+                ref_videos[f"ref_video_{index}"] = reference_frames
+                if video_audio_enabled and clip.get("hasAudio", True):
+                    audio = _decode_audio(path, piece_start, piece_duration)
+                    if audio is not None:
+                        ref_video_audios[f"ref_video_audio_{index}"] = audio
             if len(ref_videos) >= MAX_REF_VIDEOS:
                 break
-            frames = _decode_video(
-                path, piece_start, piece_duration, FPS, target_width, target_height
-            )
-            if frames is None or frames.shape[0] < 5:
-                continue
-            index = len(ref_videos)
-            ref_videos[f"ref_video_{index}"] = frames
-            if video_audio_enabled and clip.get("hasAudio", True):
-                audio = _decode_audio(path, piece_start, piece_duration)
-                if audio is not None:
-                    ref_video_audios[f"ref_video_audio_{index}"] = audio
+
+    # A true gap has no video reference. Its nearest visual context is anchored
+    # as target first/last frames with the official Add Guide mechanism.
+    for clip, timeline_second, frame_idx, kind in _pick_gap_guides(clips, selection_start, selection_end):
+        frame = _decode_frame(
+            _safe_input_path(str(clip["file"])), _source_time(clip, timeline_second),
+            target_width, target_height,
+        )
+        if frame is not None:
+            guides.append({"image": frame, "audio": None, "frame_idx": 0 if frame_idx == 0 else target_length - 1, "kind": kind})
 
     for asset in timeline.get("audios", []):
         if len(ref_audios) >= MAX_REF_AUDIOS:
@@ -597,7 +654,20 @@ def _build_references(
         if audio is not None:
             ref_audios[f"ref_audio_{len(ref_audios)}"] = audio
 
-    return ref_images, ref_videos, ref_video_audios, ref_audios
+    return ref_images, ref_videos, ref_video_audios, ref_audios, guides
+
+
+def _apply_h3_guides(conditioning, latent, vae, audio_vae, guides: list[dict[str, Any]]):
+    """Apply timeline guides through ComfyUI's native, versioned H3 node."""
+
+    if not hasattr(h3_nodes, "MiniMaxH3AddGuide"):
+        raise RuntimeError("当前 ComfyUI 缺少 MiniMaxH3AddGuide；请更新到包含 PR #15439 的版本。")
+    for guide in guides:
+        conditioning = h3_nodes.MiniMaxH3AddGuide.execute(
+            conditioning, latent, int(guide["frame_idx"]), vae=vae,
+            audio_vae=audio_vae, image=guide.get("image"), audio=guide.get("audio"),
+        )[0]
+    return conditioning
 
 
 def _execute_h3_independent_first(
@@ -772,8 +842,8 @@ class MiniMaxH3TimelineDirector(io.ComfyNode):
             node_id="MiniMaxH3TimelineDirector",
             display_name="MiniMax H3 时间线导演台",
             description=(
-                "在可编辑时间线中选择视频参考区域，自动组装参考视频、配套音频、"
-                "边界首尾帧、独立图片与独立音频；独立素材从 1 编号，并输出合并音轨。"
+                "在可编辑时间线中组装 H3 参考素材；与生成区重叠的视频使用原生 Add Guide "
+                "固定到目标帧位置，跨越边缘的区外片段作为普通视频参考，空隙自动固定首尾帧。"
             ),
             category="model/conditioning/minimax",
             inputs=[
@@ -819,24 +889,27 @@ class MiniMaxH3TimelineDirector(io.ComfyNode):
     ) -> io.NodeOutput:
         timeline = _parse_timeline(timeline_data)
         target_width, target_height = int(width), int(height)
-        ref_images, ref_videos, ref_video_audios, ref_audios = _build_references(
-            timeline, target_width, target_height
+        length = _aligned_h3_length(_float(generation_seconds, 5.0))
+        ref_images, ref_videos, ref_video_audios, ref_audios, guides = _build_references(
+            timeline, target_width, target_height, length
         )
-        if not (ref_images or ref_videos or ref_audios):
+        if not (ref_images or ref_videos or ref_audios or guides):
             raise ValueError(
                 "导演台没有可用参考：请上传图片/音频，或让生成选择区覆盖视频片段/位于两段视频之间。"
             )
-        length = _aligned_h3_length(_float(generation_seconds, 5.0))
         video_audio_output = _timeline_video_audio(timeline)
         standalone_audio_output = _standalone_audio_track(timeline)
         log.info(
-            "Building H3 refs at %dx%d: %d images, %d videos, %d paired audios, %d standalone audios; %d output frames",
+            "Building H3 refs at %dx%d: %d images, %d videos, %d paired audios, %d standalone audios, %d native guides; %d output frames",
             target_width, target_height, len(ref_images), len(ref_videos),
-            len(ref_video_audios), len(ref_audios), length,
+            len(ref_video_audios), len(ref_audios), len(guides), length,
         )
         conditioning, latent = _execute_h3_independent_first(
             clip, vae, audio_vae, prompt, target_width, target_height, length,
             ref_image_size, ref_images, ref_videos, ref_video_audios, ref_audios,
+        )
+        conditioning = _apply_h3_guides(
+            conditioning, latent, vae, audio_vae, guides
         )
         return io.NodeOutput(
             conditioning, latent, video_audio_output, standalone_audio_output

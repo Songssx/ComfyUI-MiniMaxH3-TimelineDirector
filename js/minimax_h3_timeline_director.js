@@ -59,6 +59,7 @@ function installStyles() {
     .m3td-clip-meta { position:absolute; left:9px; bottom:6px; color:#c8d9f7; text-shadow:0 1px 2px #000; }
     .m3td-clip-ref { position:absolute; right:6px; top:6px; z-index:3; padding:1px 4px; border-radius:3px;
       color:#dffcff; background:#102432dc; font-size:10px; font-weight:700; }
+    .m3td-clip-ref.guide { top:24px; color:#78fff5; border:1px solid #43d9d177; }
     .m3td-handle { position:absolute; top:0; bottom:0; width:7px; z-index:4; cursor:ew-resize; }
     .m3td-handle.left { left:0; } .m3td-handle.right { right:0; }
     .m3td-audio-clip { position:absolute; top:5px; height:40px; overflow:hidden; border:1px solid #a77636; border-radius:4px;
@@ -230,27 +231,33 @@ class TimelineDirectorUI {
     const end = start + this.state.selection.duration;
     const ordered = [...this.state.videoClips].sort((a,b) => a.start - b.start);
     const epsilon = 1 / 24;
-    const tolerance = .5 / 24;
     const clipEnd = c => c.start + c.duration;
-    const startCutsClip = ordered.some(c => c.start < start - tolerance && start < clipEnd(c) - tolerance);
-    const hasLeftGapContext = !startCutsClip && ordered.some(c => clipEnd(c) <= start + epsilon);
-    const endCutsClip = ordered.some(c => c.start + tolerance < end && end < clipEnd(c) - tolerance);
-    const hasRightGapContext = !endCutsClip && ordered.some(c => c.start >= end - epsilon);
-    const boundaryCount = Math.min(2, (startCutsClip || hasLeftGapContext ? 1 : 0) + (endCutsClip || hasRightGapContext ? 1 : 0));
+    const guidePieces = [];
     const videoPieces = [];
     let pairedAudioCount = 0;
     for (const clip of ordered) {
-      let overlap = Math.min(end, clip.start + clip.duration) - Math.max(start, clip.start);
-      while (overlap >= 5 / 24 && videoPieces.length < 3) {
-        const seconds = Math.min(15, overlap);
+      const overlapStart = Math.max(start, clip.start), overlapEnd = Math.min(end, clipEnd(clip));
+      const overlap = overlapEnd - overlapStart;
+      if (overlap <= 0) continue;
+      const guideFrames = Math.max(1, Math.round(overlap * 24));
+      guidePieces.push({clipId:clip.id, frames:guideFrames, hasAudio:this.state.videoAudioEnabled && !!clip.hasAudio});
+      const outside = [];
+      if (clip.start < start) outside.push(Math.min(clipEnd(clip), start) - clip.start);
+      if (clipEnd(clip) > end) outside.push(clipEnd(clip) - Math.max(clip.start, end));
+      for (let remaining of outside) while (remaining >= 5/24 && videoPieces.length < 3) {
+        const seconds = Math.min(15, remaining);
         const hasAudio = this.state.videoAudioEnabled && !!clip.hasAudio;
         videoPieces.push({clipId: clip.id, seconds, hasAudio});
         if (hasAudio) pairedAudioCount++;
-        overlap -= seconds;
+        remaining -= seconds;
       }
-      if (videoPieces.length >= 3) break;
     }
-    return {boundaryCount, videoPieces, pairedAudioCount};
+    let gapGuideCount = 0;
+    if (!guidePieces.length) {
+      if (ordered.some(c => clipEnd(c) <= start + epsilon)) gapGuideCount++;
+      if (ordered.some(c => c.start >= end - epsilon)) gapGuideCount++;
+    }
+    return {guidePieces, gapGuideCount, videoPieces, pairedAudioCount};
   }
 
   snapPoints(excludeClipId = null, includeSelection = true) {
@@ -462,7 +469,8 @@ class TimelineDirectorUI {
   clipHTML(clip, plan) {
     const left = clip.start * this.zoom, width = Math.max(10, clip.duration * this.zoom);
     const videoIndex = plan.videoPieces.findIndex(piece => piece.clipId === clip.id);
-    const refTag = videoIndex >= 0 ? `<span class="m3td-clip-ref">&lt;Video ${videoIndex+1}&gt;</span>` : "";
+    const guide = plan.guidePieces.find(piece => piece.clipId === clip.id);
+    const refTag = `${videoIndex >= 0 ? `<span class="m3td-clip-ref">&lt;Video ${videoIndex+1}&gt;</span>` : ""}${guide ? `<span class="m3td-clip-ref guide">GUIDE ${guide.frames}帧</span>` : ""}`;
     return `<div class="m3td-clip ${clip.id === this.selectedId ? "selected" : ""}" data-id="${esc(clip.id)}" style="left:${left}px;width:${width}px">
       <video muted preload="metadata" src="${esc(viewURL(clip.file))}"></video><div class="m3td-clip-shade"></div>
       <i class="m3td-handle left" data-edge="left"></i><i class="m3td-handle right" data-edge="right"></i>
@@ -721,15 +729,14 @@ class TimelineDirectorUI {
   renderTags() {
     const plan=this.referencePlan();
     const independentPictures=this.state.images.length;
-    const pictures=Math.min(9,plan.boundaryCount+independentPictures);
-    const encodedBoundaryCount=Math.max(0,pictures-independentPictures);
-    const videoText=plan.videoPieces.length ? `视频 <Video 1..${plan.videoPieces.length}>（仅编码选区重叠部分）` : "无重叠视频";
+    const videoText=plan.videoPieces.length ? `区外参考视频 <Video 1..${plan.videoPieces.length}>` : "无普通视频参考";
     const audioTotal=plan.pairedAudioCount+this.state.audios.length;
     const pictureText=independentPictures ? `独立图片 <Picture 1..${independentPictures}>` : "无独立图片";
-    const boundaryText=encodedBoundaryCount ? `自动边界帧 <Picture ${independentPictures+1}..${pictures}>` : "无自动边界帧";
+    const guideFrames=plan.guidePieces.reduce((sum,item)=>sum+item.frames,0);
+    const guideText=plan.guidePieces.length ? `原生固定 Guide ${plan.guidePieces.length}段/${guideFrames}帧` : (plan.gapGuideCount ? `空隙首尾 Guide ${plan.gapGuideCount}帧` : "无固定 Guide");
     const standaloneAudio=this.state.audios.length ? `独立音频 <Audio 1..${this.state.audios.length}>` : "无独立音频";
     const pairedAudio=!this.state.videoAudioEnabled ? "视频原声：参考已关闭" : (plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签");
-    this.root.querySelector(".m3td-tags").textContent = `${pictureText} · ${boundaryText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
+    this.root.querySelector(".m3td-tags").textContent = `${pictureText} · ${guideText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
   }
 
   splitSelected() {
