@@ -12,7 +12,7 @@ function installStyles() {
   style.textContent = `
     .m3td { --bg:#11141b; --panel:#191e28; --line:#30384a; --text:#e9eef8; --muted:#919bad;
       --cyan:#43d9d1; --blue:#477ff0; --amber:#f3af4e; --red:#ef6a77; box-sizing:border-box;
-      width:100%; max-width:100%; height:100%; min-height:520px; color:var(--text); background:var(--bg); border:1px solid #2b3241;
+      position:relative; width:100%; max-width:100%; height:100%; min-height:520px; color:var(--text); background:var(--bg); border:1px solid #2b3241;
       border-radius:9px; overflow:hidden; font:12px/1.35 Inter,Segoe UI,Arial,sans-serif; user-select:none; }
     .m3td * { box-sizing:border-box; }
     .m3td button,.m3td input { font:inherit; }
@@ -118,6 +118,10 @@ function installStyles() {
     .m3td-tags { color:#a9d8d4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .m3td-progress { width:90px; height:4px; overflow:hidden; border-radius:2px; background:#303746; }
     .m3td-progress > i { display:block; height:100%; width:0; background:var(--cyan); }
+    .m3td.external-file-drag::after { content:attr(data-drop-label); position:absolute; inset:7px; z-index:50; display:flex;
+      align-items:center; justify-content:center; padding:20px; border:2px dashed var(--cyan); border-radius:8px;
+      color:#dffffc; background:#071918ef; box-shadow:inset 0 0 40px #43d9d133; font-size:18px; font-weight:700;
+      text-align:center; pointer-events:none; }
   `;
   document.head.appendChild(style);
 }
@@ -135,6 +139,23 @@ function reorderById(items, draggedId, targetId, after = false) {
   if (targetIndex < 0) { items.splice(sourceIndex, 0, moved); return false; }
   items.splice(targetIndex + (after ? 1 : 0), 0, moved);
   return true;
+}
+
+function isExternalFileDrag(event) {
+  const transfer = event.dataTransfer;
+  return !!transfer && (transfer.files?.length > 0 || Array.from(transfer.types || []).includes("Files"));
+}
+
+function uploadKindForFile(file) {
+  const mime = String(file?.type || "").toLowerCase();
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("video/")) return "video";
+  const extension = String(file?.name || "").split(".").pop()?.toLowerCase() || "";
+  if (["png","jpg","jpeg","webp","bmp","gif","tif","tiff"].includes(extension)) return "image";
+  if (["mp3","wav","flac","m4a","aac","ogg","opus","wma"].includes(extension)) return "audio";
+  if (["mp4","mov","mkv","webm","avi","m4v","mpeg","mpg"].includes(extension)) return "video";
+  return null;
 }
 
 function emptyState() {
@@ -190,6 +211,7 @@ class TimelineDirectorUI {
     this.syncGenerationWidget();
     this.render();
     this.attachGlobalPointerHandlers();
+    this.bindExternalFileDrop();
   }
 
   readWidget() {
@@ -432,6 +454,45 @@ class TimelineDirectorUI {
       if (e.target.closest(".m3td-clip")) return;
       this.fitSelectionToGapAt(this.timeFromClientX(e.clientX));
     });
+  }
+
+  bindExternalFileDrop() {
+    const stopComfyDrop = event => {
+      if (!isExternalFileDrag(event)) return false;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return true;
+    };
+    const showDropTarget = event => {
+      if (!stopComfyDrop(event)) return;
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      this.root.dataset.dropLabel = "释放以导入视频、参考图片或参考音频";
+      this.root.classList.add("external-file-drag");
+    };
+    const hideDropTarget = event => {
+      if (!isExternalFileDrag(event)) return;
+      if (event.relatedTarget && this.root.contains(event.relatedTarget)) return;
+      stopComfyDrop(event);
+      this.root.classList.remove("external-file-drag");
+    };
+    const receiveFiles = async event => {
+      if (!isExternalFileDrag(event)) return;
+      const files = Array.from(event.dataTransfer?.files || []);
+      stopComfyDrop(event);
+      this.root.classList.remove("external-file-drag");
+      if (this.uploading) { this.setStatus("当前文件仍在上传，请稍后再拖入"); return; }
+      const supported = files.map(file => ({file, kind:uploadKindForFile(file)})).filter(item => item.kind);
+      const rejected = files.length - supported.length;
+      if (!supported.length) { this.setStatus("不支持该文件；请拖入图片、音频或视频"); return; }
+      for (const item of supported) await this.addFile(item.kind, item.file);
+      if (rejected) this.setStatus(`已导入 ${supported.length} 个文件，忽略 ${rejected} 个不支持的文件`);
+    };
+    this.externalDropHandlers = {showDropTarget, hideDropTarget, receiveFiles};
+    this.root.addEventListener("dragenter", showDropTarget, true);
+    this.root.addEventListener("dragover", showDropTarget, true);
+    this.root.addEventListener("dragleave", hideDropTarget, true);
+    this.root.addEventListener("drop", receiveFiles, true);
   }
 
   timelineDuration() {
@@ -865,7 +926,15 @@ class TimelineDirectorUI {
   }
 
   reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
-  destroy() { cancelAnimationFrame(this.previewRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp); }
+  destroy() {
+    cancelAnimationFrame(this.previewRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
+    if(this.externalDropHandlers){
+      this.root.removeEventListener("dragenter",this.externalDropHandlers.showDropTarget,true);
+      this.root.removeEventListener("dragover",this.externalDropHandlers.showDropTarget,true);
+      this.root.removeEventListener("dragleave",this.externalDropHandlers.hideDropTarget,true);
+      this.root.removeEventListener("drop",this.externalDropHandlers.receiveFiles,true);
+    }
+  }
 }
 
 app.registerExtension({

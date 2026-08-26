@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-26
+
+### Added
+
+- Drop image, audio, and video files directly anywhere inside the director widget to upload them to the correct media collection.
+- A full-widget drop overlay provides clear visual feedback during external file dragging.
+
+### Fixed
+
+- External file drops are captured inside the director and prevented from reaching ComfyUI's canvas handlers, avoiding unwanted Load Image nodes or embedded-workflow loading.
+
 ## [0.3.0] - 2026-08-26
 
 ### Added
