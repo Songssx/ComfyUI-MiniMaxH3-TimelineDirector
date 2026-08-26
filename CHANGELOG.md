@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+### Documentation
+
+- Added a Chinese operational guide for video-generation agents covering long-video segmentation, fixed-Guide overlap, H3 prompt alignment, audio continuity, reference ordering, and deduplicated assembly.
+
 ## [0.3.1] - 2026-08-26
 
 ### Added

@@ -13,6 +13,8 @@
 
 简体中文 · [English](README.md)
 
+> 视频生成 Agent 请先阅读：[长视频分段生成 Agent 操作规范](docs/AGENT_LONG_VIDEO_GUIDE_CN.md)
+
 这是一个面向 ComfyUI 原生 **MiniMax H3 Reference to Video** 工作流的可编辑参考素材时间线节点。
 
 它把原本需要在工作流中分别处理的参考视频、视频原声、原生固定Guide、独立图片和独立音频集中到一个导演台界面。用户可以像使用简化版剪辑软件一样移动、裁剪和分割视频，再由节点组装准确的H3参考与Guide输入。

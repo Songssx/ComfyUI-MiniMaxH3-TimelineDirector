@@ -13,6 +13,8 @@
 
 [简体中文](README_CN.md) · English
 
+> Video-generation agents: read the [Chinese long-video segmented-generation guide](docs/AGENT_LONG_VIDEO_GUIDE_CN.md).
+
 An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference to Video** pipeline.
 
 Instead of preparing every reference video, soundtrack, fixed guide, image, and audio clip in separate nodes, the Timeline Director brings them into one visual editing surface. Place and trim video clips, scrub a low-resolution preview, define the cyan generation range, and let the node assemble the exact H3 references and guides at queue time.
