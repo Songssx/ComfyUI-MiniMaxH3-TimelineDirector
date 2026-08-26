@@ -1,8 +1,8 @@
 {
-  "id": "e3f2b845-8f2c-4b5a-9caf-eac1029d3e7e",
+  "id": "42476cc0-ba47-4042-ad72-3802b573afb3",
   "revision": 0,
-  "last_node_id": 188,
-  "last_link_id": 341,
+  "last_node_id": 184,
+  "last_link_id": 352,
   "nodes": [
     {
       "id": 117,
@@ -35,26 +35,26 @@
       "id": 126,
       "type": "BasicGuider",
       "pos": [
-        -260,
-        5080
+        156.29100926618642,
+        5074.271224643126
       ],
       "size": [
         360,
         60
       ],
       "flags": {},
-      "order": 20,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 317
+          "link": 352
         },
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 270
+          "link": 344
         }
       ],
       "outputs": [
@@ -73,415 +73,6 @@
       }
     },
     {
-      "id": 131,
-      "type": "ComfyMathExpression",
-      "pos": [
-        -1450,
-        5940
-      ],
-      "size": [
-        225,
-        74
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "a",
-          "name": "values.a",
-          "type": "FLOAT,INT,BOOLEAN",
-          "link": 261
-        },
-        {
-          "label": "b",
-          "name": "values.b",
-          "shape": 7,
-          "type": "FLOAT,INT,BOOLEAN",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "FLOAT",
-          "type": "FLOAT",
-          "links": []
-        },
-        {
-          "name": "INT",
-          "type": "INT",
-          "links": [
-            275
-          ]
-        },
-        {
-          "name": "BOOL",
-          "type": "BOOLEAN",
-          "links": []
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "ComfyMathExpression"
-      },
-      "widgets_values": [
-        "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17"
-      ],
-      "widgets_values_named": {
-        "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17"
-      }
-    },
-    {
-      "id": 129,
-      "type": "RandomNoise",
-      "pos": [
-        -260,
-        4940
-      ],
-      "size": [
-        360,
-        90
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "NOISE",
-          "type": "NOISE",
-          "links": [
-            253
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "RandomNoise"
-      },
-      "widgets_values": [
-        916261814925780,
-        "fixed"
-      ],
-      "widgets_values_named": {
-        "noise_seed": 916261814925780,
-        "control_after_generate": "fixed"
-      }
-    },
-    {
-      "id": 119,
-      "type": "VAELoader",
-      "pos": [
-        -1490,
-        5270
-      ],
-      "size": [
-        640,
-        70
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [
-            251,
-            273
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "VAELoader",
-        "models": [
-          {
-            "name": "minimax_h3_video_vae_fp16.safetensors",
-            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors",
-            "directory": "vae"
-          }
-        ]
-      },
-      "widgets_values": [
-        "minimax_h3_video_vae_fp16.safetensors"
-      ],
-      "widgets_values_named": {
-        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
-      }
-    },
-    {
-      "id": 120,
-      "type": "VAELoader",
-      "pos": [
-        -1490,
-        5380
-      ],
-      "size": [
-        650,
-        70
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [
-            250,
-            274
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "VAELoader",
-        "models": [
-          {
-            "name": "minimax_h3_audio_vae_fp32.safetensors",
-            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
-            "directory": "vae"
-          }
-        ]
-      },
-      "widgets_values": [
-        "minimax_h3_audio_vae_fp32.safetensors"
-      ],
-      "widgets_values_named": {
-        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
-      }
-    },
-    {
-      "id": 122,
-      "type": "VAEDecode",
-      "pos": [
-        529.3274299993251,
-        5015.089951791652
-      ],
-      "size": [
-        230,
-        60
-      ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 22,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 280
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 251
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            258
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "VAEDecode"
-      }
-    },
-    {
-      "id": 130,
-      "type": "CreateVideo",
-      "pos": [
-        786.3330277167329,
-        5049.334497020666
-      ],
-      "size": [
-        270,
-        110
-      ],
-      "flags": {},
-      "order": 24,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 258
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 341
-        }
-      ],
-      "outputs": [
-        {
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "links": [
-            260
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "CreateVideo"
-      },
-      "widgets_values": [
-        24,
-        8
-      ],
-      "widgets_values_named": {
-        "fps": 24,
-        "bit_depth": 8
-      }
-    },
-    {
-      "id": 124,
-      "type": "BasicScheduler",
-      "pos": [
-        -255.51103185380185,
-        5318.566640206674
-      ],
-      "size": [
-        348.91735879415046,
-        149.62971135931093
-      ],
-      "flags": {},
-      "order": 19,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 316
-        }
-      ],
-      "outputs": [
-        {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": [
-            256
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "BasicScheduler"
-      },
-      "widgets_values": [
-        "simple",
-        8,
-        1
-      ],
-      "widgets_values_named": {
-        "scheduler": "simple",
-        "steps": 8,
-        "denoise": 1
-      }
-    },
-    {
-      "id": 144,
-      "type": "easy showAnything",
-      "pos": [
-        -1217.2090782723183,
-        5606.0629270759055
-      ],
-      "size": [
-        210,
-        88
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "anything",
-          "shape": 7,
-          "type": "*",
-          "link": 285
-        }
-      ],
-      "outputs": [
-        {
-          "name": "output",
-          "type": "*",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-easy-use",
-        "ver": "5618a748c14858a6e95a583baa28bb7c8da7976a",
-        "Node name for S&R": "easy showAnything"
-      },
-      "widgets_values": [
-        "640"
-      ],
-      "widgets_values_named": {
-        "text": "640"
-      }
-    },
-    {
-      "id": 145,
-      "type": "easy showAnything",
-      "pos": [
-        -1217.6631218548262,
-        5739.245287484565
-      ],
-      "size": [
-        210,
-        88
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "anything",
-          "shape": 7,
-          "type": "*",
-          "link": 286
-        }
-      ],
-      "outputs": [
-        {
-          "name": "output",
-          "type": "*",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-easy-use",
-        "ver": "5618a748c14858a6e95a583baa28bb7c8da7976a",
-        "Node name for S&R": "easy showAnything"
-      },
-      "widgets_values": [
-        "1152"
-      ],
-      "widgets_values_named": {
-        "text": "1152"
-      }
-    },
-    {
       "id": 116,
       "type": "MarkdownNote",
       "pos": [
@@ -493,7 +84,7 @@
         850.125
       ],
       "flags": {},
-      "order": 4,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -509,53 +100,6 @@
       "bgcolor": "#000"
     },
     {
-      "id": 128,
-      "type": "CLIPLoader",
-      "pos": [
-        -1484.4685927986675,
-        5089.942895997575
-      ],
-      "size": [
-        640,
-        120
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "CLIP",
-          "type": "CLIP",
-          "links": [
-            272
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "CLIPLoader",
-        "models": [
-          {
-            "name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
-            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
-            "directory": "text_encoders"
-          }
-        ]
-      },
-      "widgets_values": [
-        "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-        "minimax",
-        "default"
-      ],
-      "widgets_values_named": {
-        "clip_name": "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-        "type": "minimax",
-        "device": "default"
-      }
-    },
-    {
       "id": 127,
       "type": "UNETLoader",
       "pos": [
@@ -567,7 +111,7 @@
         82
       ],
       "flags": {},
-      "order": 6,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -601,18 +145,409 @@
       }
     },
     {
+      "id": 144,
+      "type": "easy showAnything",
+      "pos": [
+        -1215.2492332177183,
+        5601.163314439405
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "anything",
+          "shape": 7,
+          "type": "*",
+          "link": 285
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "5618a748c14858a6e95a583baa28bb7c8da7976a",
+        "Node name for S&R": "easy showAnything"
+      },
+      "widgets_values": [
+        "864"
+      ],
+      "widgets_values_named": {
+        "text": "864"
+      }
+    },
+    {
+      "id": 179,
+      "type": "KSamplerSelect",
+      "pos": [
+        209.49743383365987,
+        5183.705023289966
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            341
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 130,
+      "type": "CreateVideo",
+      "pos": [
+        913.4246897541437,
+        4912.4564451096685
+      ],
+      "size": [
+        270,
+        126
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 258
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 328
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            260
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24,
+        8,
+        "sRGB"
+      ],
+      "widgets_values_named": {
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB"
+      }
+    },
+    {
+      "id": 145,
+      "type": "easy showAnything",
+      "pos": [
+        -1213.3590081381662,
+        5746.418810345664
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "anything",
+          "shape": 7,
+          "type": "*",
+          "link": 286
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "5618a748c14858a6e95a583baa28bb7c8da7976a",
+        "Node name for S&R": "easy showAnything"
+      },
+      "widgets_values": [
+        "480"
+      ],
+      "widgets_values_named": {
+        "text": "480"
+      }
+    },
+    {
+      "id": 128,
+      "type": "CLIPLoader",
+      "pos": [
+        -1495.9462293764273,
+        5091.377600569795
+      ],
+      "size": [
+        640,
+        120
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            346
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "CLIPLoader",
+        "models": [
+          {
+            "name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+            "directory": "text_encoders"
+          }
+        ]
+      },
+      "widgets_values": [
+        "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "type": "minimax",
+        "device": "default"
+      }
+    },
+    {
+      "id": 119,
+      "type": "VAELoader",
+      "pos": [
+        -1494.30411371666,
+        5272.8694091444395
+      ],
+      "size": [
+        640,
+        70
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            251,
+            347
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "minimax_h3_video_vae_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      }
+    },
+    {
+      "id": 120,
+      "type": "VAELoader",
+      "pos": [
+        -1500.0429320055398,
+        5394.347045722197
+      ],
+      "size": [
+        650,
+        70
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            250,
+            348
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      }
+    },
+    {
+      "id": 122,
+      "type": "VAEDecode",
+      "pos": [
+        916.1098723933795,
+        5097.97485199241
+      ],
+      "size": [
+        230,
+        60
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 280
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 251
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            258
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 121,
+      "type": "VAEDecodeAudio",
+      "pos": [
+        914.7436379821778,
+        5253.488956759807
+      ],
+      "size": [
+        230,
+        60
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 281
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 250
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            328
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "VAEDecodeAudio"
+      }
+    },
+    {
       "id": 125,
       "type": "SamplerCustomAdvanced",
       "pos": [
-        130.96551343961147,
-        4943.577696368794
+        556.8556745238828,
+        4933.173657183853
       ],
       "size": [
         252.56790292102096,
         326
       ],
       "flags": {},
-      "order": 21,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -628,7 +563,7 @@
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 333
+          "link": 341
         },
         {
           "name": "sigmas",
@@ -638,7 +573,7 @@
         {
           "name": "latent_image",
           "type": "LATENT",
-          "link": 271
+          "link": 345
         }
       ],
       "outputs": [
@@ -663,414 +598,64 @@
       }
     },
     {
-      "id": 179,
-      "type": "KSamplerSelect",
+      "id": 124,
+      "type": "BasicScheduler",
       "pos": [
-        -217.15198520286282,
-        5194.466147431891
+        160.77997741238457,
+        5312.837864849799
       ],
       "size": [
-        270,
-        58
+        348.91735879415046,
+        149.62971135931093
       ],
       "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "SAMPLER",
-          "type": "SAMPLER",
-          "links": [
-            333
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.31.0",
-        "Node name for S&R": "KSamplerSelect"
-      },
-      "widgets_values": [
-        "euler"
-      ],
-      "widgets_values_named": {
-        "sampler_name": "euler"
-      }
-    },
-    {
-      "id": 121,
-      "type": "VAEDecodeAudio",
-      "pos": [
-        532.1093096472108,
-        5156.574490502356
-      ],
-      "size": [
-        230,
-        60
-      ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 23,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 281
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 250
-        }
-      ],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": []
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "VAEDecodeAudio"
-      }
-    },
-    {
-      "id": 115,
-      "type": "ResolutionSelector",
-      "pos": [
-        -1521.925687578154,
-        5602.801787215362
-      ],
-      "size": [
-        270,
-        176
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "showAdvanced": false,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "width",
-          "type": "INT",
-          "links": [
-            276,
-            285
-          ]
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            277,
-            286
-          ]
-        }
-      ],
-      "title": "Resolution Selector (Size)",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "ResolutionSelector"
-      },
-      "widgets_values": [
-        "9:16 (Portrait Widescreen)",
-        0.7,
-        32
-      ],
-      "widgets_values_named": {
-        "aspect_ratio": "9:16 (Portrait Widescreen)",
-        "megapixels": 0.7,
-        "multiple": 32
-      },
-      "color": "#322",
-      "bgcolor": "#533"
-    },
-    {
-      "id": 136,
-      "type": "MiniMaxH3TimelineDirector",
-      "title": "MiniMax H3 时间线导演台",
-      "pos": [
-        -734.7346835217581,
-        4940.915974204828
-      ],
-      "size": [
-        860,
-        1040
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 272
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 273
-        },
-        {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 274
-        },
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "widget": {
-            "name": "prompt"
-          },
-          "link": 287
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "widget": {
-            "name": "width"
-          },
-          "link": 276
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "widget": {
-            "name": "height"
-          },
-          "link": 277
-        },
-        {
-          "name": "generation_seconds",
-          "type": "FLOAT",
-          "widget": {
-            "name": "generation_seconds"
-          },
-          "link": 275
-        },
-        {
-          "name": "ref_image_size",
-          "type": "COMBO",
-          "widget": {
-            "name": "ref_image_size"
-          },
-          "link": null
-        },
-        {
-          "name": "timeline_data",
-          "type": "STRING",
-          "widget": {
-            "name": "timeline_data"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "links": [
-            270
-          ]
-        },
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            271
-          ]
-        },
-        {
-          "name": "视频原声合并",
-          "type": "AUDIO",
-          "links": null
-        },
-        {
-          "name": "独立音频合并",
-          "type": "AUDIO",
-          "links": null
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MiniMaxH3TimelineDirector",
-        "cnr_id": "local",
-        "ver": "0.1.0"
-      },
-      "widgets_values": [
-        "",
-        1344,
-        768,
-        7.0,
-        "match",
-        ""
-      ],
-      "widgets_values_named": {
-        "prompt": "",
-        "width": 1344,
-        "height": 768,
-        "generation_seconds": 7.0,
-        "ref_image_size": "match",
-        "timeline_data": ""
-      }
-    },
-    {
-      "id": 132,
-      "type": "PrimitiveFloat",
-      "pos": [
-        -1520.874981064363,
-        5818.261447266933
-      ],
-      "size": [
-        270,
-        70
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "FLOAT",
-          "type": "FLOAT",
-          "links": [
-            261,
-            275
-          ]
-        }
-      ],
-      "title": "Float (Duration)",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "PrimitiveFloat"
-      },
-      "widgets_values": [
-        7
-      ],
-      "widgets_values_named": {
-        "value": 7
-      },
-      "color": "#322",
-      "bgcolor": "#533"
-    },
-    {
-      "id": 138,
-      "type": "PrimitiveStringMultiline",
-      "pos": [
-        -941.2967877047727,
-        5613.413400686406
-      ],
-      "size": [
-        475.1489339549116,
-        377.4920509373733
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            287
-          ]
-        }
-      ],
-      "title": "Input Text (Prompt)",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.0",
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "subject_definitions:\n<Subject 1> is the young East Asian woman from <Picture 1>. Preserve her exact identity throughout the entire video: fair skin, oval face, natural facial proportions, shoulder-length dark brown hair, soft straight bangs, small silver hoop earrings, delicate pendant necklace, and dark navy Japanese sailor-style school uniform with white stripe trim. Her face, hairstyle, age, clothing, accessories, and body proportions must remain consistent in every frame.\n\n<Video 1> is the complete 10.125-second reference video. It provides the exact action choreography, body movement, pose timing, camera movement, framing, scene transitions, rocky battlefield environment, blue-and-orange energy effects, lighting changes, debris motion, and final composition.\n\n<Audio 1> is the synchronized original audio track from <Video 1>.\n\nsummary:\n[video editing + reference generation + audio reuse]\nReplace the original animated male character in <Video 1> completely with <Subject 1>. Preserve the original video’s action, timing, camera language, environment, visual effects, editing rhythm, and synchronized audio. Only the character’s identity, anatomy, hairstyle, face, and costume are replaced.\n\nretention_analysis:\n<Subject 1>: fully_preserved — maintain the exact face, shoulder-length hairstyle, bangs, earrings, necklace, sailor uniform, colors, and realistic feminine anatomy from <Picture 1> without identity drift.\n\n<Video 1>: partially_preserved — fully retain its motion choreography, poses, camera movement, framing, timing, battlefield, blue-and-orange energy, fire, lightning, smoke, flying rocks, lighting, and cuts. Remove only the original male character’s identity, spiky hairstyle, facial features, and orange martial-arts costume.\n\n<Audio 1>: fully_copy — retain the complete original synchronized soundtrack without changing its timing, pitch, rhythm, sound effects, or music.\n\ndetailed_description:\nCreate a portrait-format cinematic fantasy action video following <Video 1> frame by frame.\n\n[Shot 1, 00:00.000–00:05.000]\nPlace <Subject 1> in the original character’s exact foreground position and reproduce the same crouched combat posture, forward-reaching hand movement, determined gaze, head direction, and body motion. Preserve the original camera angle and forward camera energy. Blue supernatural energy develops on one side while orange fire and heat build on the other. Her shoulder-length hair and bangs respond naturally to the energy wind but never become spiky or change length. Her sailor uniform remains unchanged and moves naturally with her body. Keep her facial identity clearly recognizable even during fast motion and strong colored lighting.\n\n[Shot 2, approximately 00:05.000–00:08.000]\nFollow the original cut or transition into the wide battlefield composition. <Subject 1> performs the same rising and power-release action with the same timing. Massive blue and orange energy columns erupt around her; rocks, dust, sparks, smoke, and debris rise according to <Video 1>. Preserve the original camera movement and scale. Energy may illuminate her skin and clothing but must not recolor, redesign, obscure, or transform them.\n\n[Shot 3, approximately 00:08.000–00:10.125]\nReproduce the final centered stance on the rocky ground. <Subject 1> stands firmly with the same posture and timing as the original character. Tall blue energy burns on one side and orange flame burns on the other while smoke and debris settle around her. Hold a powerful cinematic final composition until the video ends.\n\nUse only one visible lead character. No duplicate person, no male character remnants, no face switching, no costume change, no extra limbs, no hand deformation, no anime-boy facial features, and no new dialogue or lip-sync.\n\noverall_soundscape:\nFully reuse <Audio 1> from <Video 1>, maintaining exact synchronization with every energy burst, impact, debris movement, camera transition, and final power stance. Do not generate additional speech.\n\nnon_diegetic_music:\nFully copy the original music contained in <Audio 1>. Preserve its original timing, intensity progression, rhythm, and ending without replacement or remixing."
-      ],
-      "widgets_values_named": {
-        "value": "subject_definitions:\n<Subject 1> is the young East Asian woman from <Picture 1>. Preserve her exact identity throughout the entire video: fair skin, oval face, natural facial proportions, shoulder-length dark brown hair, soft straight bangs, small silver hoop earrings, delicate pendant necklace, and dark navy Japanese sailor-style school uniform with white stripe trim. Her face, hairstyle, age, clothing, accessories, and body proportions must remain consistent in every frame.\n\n<Video 1> is the complete 10.125-second reference video. It provides the exact action choreography, body movement, pose timing, camera movement, framing, scene transitions, rocky battlefield environment, blue-and-orange energy effects, lighting changes, debris motion, and final composition.\n\n<Audio 1> is the synchronized original audio track from <Video 1>.\n\nsummary:\n[video editing + reference generation + audio reuse]\nReplace the original animated male character in <Video 1> completely with <Subject 1>. Preserve the original video’s action, timing, camera language, environment, visual effects, editing rhythm, and synchronized audio. Only the character’s identity, anatomy, hairstyle, face, and costume are replaced.\n\nretention_analysis:\n<Subject 1>: fully_preserved — maintain the exact face, shoulder-length hairstyle, bangs, earrings, necklace, sailor uniform, colors, and realistic feminine anatomy from <Picture 1> without identity drift.\n\n<Video 1>: partially_preserved — fully retain its motion choreography, poses, camera movement, framing, timing, battlefield, blue-and-orange energy, fire, lightning, smoke, flying rocks, lighting, and cuts. Remove only the original male character’s identity, spiky hairstyle, facial features, and orange martial-arts costume.\n\n<Audio 1>: fully_copy — retain the complete original synchronized soundtrack without changing its timing, pitch, rhythm, sound effects, or music.\n\ndetailed_description:\nCreate a portrait-format cinematic fantasy action video following <Video 1> frame by frame.\n\n[Shot 1, 00:00.000–00:05.000]\nPlace <Subject 1> in the original character’s exact foreground position and reproduce the same crouched combat posture, forward-reaching hand movement, determined gaze, head direction, and body motion. Preserve the original camera angle and forward camera energy. Blue supernatural energy develops on one side while orange fire and heat build on the other. Her shoulder-length hair and bangs respond naturally to the energy wind but never become spiky or change length. Her sailor uniform remains unchanged and moves naturally with her body. Keep her facial identity clearly recognizable even during fast motion and strong colored lighting.\n\n[Shot 2, approximately 00:05.000–00:08.000]\nFollow the original cut or transition into the wide battlefield composition. <Subject 1> performs the same rising and power-release action with the same timing. Massive blue and orange energy columns erupt around her; rocks, dust, sparks, smoke, and debris rise according to <Video 1>. Preserve the original camera movement and scale. Energy may illuminate her skin and clothing but must not recolor, redesign, obscure, or transform them.\n\n[Shot 3, approximately 00:08.000–00:10.125]\nReproduce the final centered stance on the rocky ground. <Subject 1> stands firmly with the same posture and timing as the original character. Tall blue energy burns on one side and orange flame burns on the other while smoke and debris settle around her. Hold a powerful cinematic final composition until the video ends.\n\nUse only one visible lead character. No duplicate person, no male character remnants, no face switching, no costume change, no extra limbs, no hand deformation, no anime-boy facial features, and no new dialogue or lip-sync.\n\noverall_soundscape:\nFully reuse <Audio 1> from <Video 1>, maintaining exact synchronization with every energy burst, impact, debris movement, camera transition, and final power stance. Do not generate additional speech.\n\nnon_diegetic_music:\nFully copy the original music contained in <Audio 1>. Preserve its original timing, intensity progression, rhythm, and ending without replacement or remixing."
-      },
-      "color": "#322",
-      "bgcolor": "#533"
-    },
-    {
-      "id": 164,
-      "type": "SolAttnPatch",
-      "pos": [
-        -331.62823087572053,
-        4565.6308935553025
-      ],
-      "size": [
-        270,
-        250
-      ],
-      "flags": {},
-      "order": 17,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 331
+          "link": 351
         }
       ],
       "outputs": [
         {
-          "name": "MODEL",
-          "type": "MODEL",
+          "name": "SIGMAS",
+          "type": "SIGMAS",
           "links": [
-            316,
-            317
+            256
           ]
         }
       ],
       "properties": {
-        "aux_id": "kijai/ComfyUI-SolAttn_triton",
-        "ver": "unknown",
-        "Node name for S&R": "SolAttnPatch"
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "BasicScheduler"
       },
       "widgets_values": [
-        1.5,
-        0.2,
-        0.9,
-        4096,
-        true,
-        "exact_kv_and_rows",
-        false,
-        "2d_frame",
-        true
+        "simple",
+        8,
+        1
       ],
       "widgets_values_named": {
-        "tau": 1.5,
-        "start_percent": 0.2,
-        "end_percent": 0.9,
-        "min_tokens": 4096,
-        "int8_qk": true,
-        "sink_conditioning": "exact_kv_and_rows",
-        "morton": false,
-        "morton_curve": "2d_frame",
-        "verbose": true
+        "scheduler": "simple",
+        "steps": 8,
+        "denoise": 1
       }
     },
     {
-      "id": 178,
+      "id": 177,
       "type": "LoraLoaderModelOnly",
       "pos": [
-        -785.9188244477808,
-        4564.461764989122
+        -741.4013264742927,
+        4931.119191523174
       ],
       "size": [
-        437.8632737609994,
+        355.2214515898622,
         82
       ],
       "flags": {},
-      "order": 13,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -1084,37 +669,129 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            331
+            351,
+            352
           ]
         }
       ],
       "properties": {
         "cnr_id": "comfy-core",
-        "ver": "0.31.0",
+        "ver": "0.33.0",
         "Node name for S&R": "LoraLoaderModelOnly"
       },
       "widgets_values": [
-        "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+        "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors",
         1
       ],
       "widgets_values_named": {
-        "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+        "lora_name": "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors",
         "strength_model": 1
       }
+    },
+    {
+      "id": 129,
+      "type": "RandomNoise",
+      "pos": [
+        156.29100926618642,
+        4934.271224643126
+      ],
+      "size": [
+        360,
+        90
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            253
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        4242,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "noise_seed": 4242,
+        "control_after_generate": "fixed"
+      }
+    },
+    {
+      "id": 115,
+      "type": "ResolutionSelector",
+      "pos": [
+        -1500.4051189948545,
+        5609.975310076461
+      ],
+      "size": [
+        248.47943141670112,
+        126
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "showAdvanced": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            285,
+            349
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            286,
+            350
+          ]
+        }
+      ],
+      "title": "Resolution Selector (Size)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.0",
+        "Node name for S&R": "ResolutionSelector"
+      },
+      "widgets_values": [
+        "16:9 (Widescreen)",
+        0.4,
+        32
+      ],
+      "widgets_values_named": {
+        "aspect_ratio": "16:9 (Widescreen)",
+        "megapixels": 0.4,
+        "multiple": 32
+      },
+      "color": "#322",
+      "bgcolor": "#533"
     },
     {
       "id": 92,
       "type": "SaveVideo",
       "pos": [
-        1090.426811153367,
-        4396.116400811186
+        1257.2437421228246,
+        4906.14847066597
       ],
       "size": [
-        1836.1411149969636,
+        3596.8245989767042,
         106
       ],
       "flags": {},
-      "order": 25,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -1149,153 +826,100 @@
       }
     },
     {
-      "id": 188,
-      "type": "VHS_LoadVideo",
+      "id": 184,
+      "type": "MiniMaxH3TimelineDirector",
       "pos": [
-        -1483.2437691863277,
-        6028.763788678809
+        -849.9754620574072,
+        5552.36041587978
       ],
       "size": [
-        407.5012840041138,
-        1021.6189698980232
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": []
-        },
-        {
-          "name": "frame_count",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            341
-          ]
-        },
-        {
-          "name": "video_info",
-          "type": "VHS_VIDEOINFO",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-videohelpersuite",
-        "ver": "4ee72c065db22c9d96c2427954dc69e7b908444b",
-        "Node name for S&R": "VHS_LoadVideo"
-      },
-      "widgets_values": {
-        "video": "MiniMax_H3_00031_.mp4",
-        "force_rate": 24,
-        "custom_width": 640,
-        "custom_height": 1152,
-        "frame_load_cap": 168,
-        "skip_first_frames": 0,
-        "select_every_nth": 1,
-        "format": "AnimateDiff",
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MiniMax_H3_00031_.mp4",
-            "type": "input",
-            "format": "video/mp4",
-            "force_rate": 24,
-            "custom_width": 640,
-            "custom_height": 1152,
-            "frame_load_cap": 168,
-            "skip_first_frames": 0,
-            "select_every_nth": 1
-          }
-        }
-      },
-      "widgets_values_named": {
-        "video": "MiniMax_H3_00031_.mp4",
-        "force_rate": 24,
-        "custom_width": 640,
-        "custom_height": 1152,
-        "frame_load_cap": 168,
-        "skip_first_frames": 0,
-        "select_every_nth": 1,
-        "format": "AnimateDiff",
-        "choose video to upload": null,
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "MiniMax_H3_00031_.mp4",
-            "type": "input",
-            "format": "video/mp4",
-            "force_rate": 24,
-            "custom_width": 640,
-            "custom_height": 1152,
-            "frame_load_cap": 168,
-            "skip_first_frames": 0,
-            "select_every_nth": 1
-          }
-        }
-      }
-    },
-    {
-      "id": 169,
-      "type": "LoadImage",
-      "pos": [
-        -948.9495637093769,
-        6054.653162364898
-      ],
-      "size": [
-        717.6082829770644,
-        1222.9009619566996
+        1715.1107514021596,
+        1228.1491369033602
       ],
       "flags": {},
       "order": 12,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": []
+          "name": "clip",
+          "type": "CLIP",
+          "link": 346
         },
         {
-          "name": "MASK",
-          "type": "MASK",
+          "name": "vae",
+          "type": "VAE",
+          "link": 347
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 348
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 349
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 350
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            344
+          ]
+        },
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            345
+          ]
+        },
+        {
+          "name": "视频原声合并",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "独立音频合并",
+          "type": "AUDIO",
           "links": null
         }
       ],
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.31.0",
-        "Node name for S&R": "LoadImage"
+        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
+        "Node name for S&R": "MiniMaxH3TimelineDirector"
       },
       "widgets_values": [
-        "ComfyUI_temp_kfovr_00045_.png",
-        "image"
+        "subject_definitions:\n<Video 1> is the complete 2.18-second opening source segment aligned with 00:00.000–00:02.180 of the target video. It establishes the opening shot, animation style, fighter, rocky battlefield, golden energy, camera movement, action, lighting, and pacing.\n<Video 2> is the complete 2.04-second ending source segment aligned with 00:07.970–00:10.010 of the target video. It establishes the final shot, burning ancient East Asian town, dark smoky sky, fires, architecture, magenta energy light, camera movement, lighting, and ending composition.\n<Subject 1> is the spiky black-haired martial-arts fighter in <Video 1>, wearing orange-and-dark-blue battle clothing and surrounded by a bright golden energy aura.\n<Subject 2> is the golden energy released by <Subject 1>, including its lightning-shaped edges, luminous particles, shock waves, dust displacement, and intense yellow-orange illumination.\n<Subject 3> is the burning ancient East Asian town in <Video 2>, including its traditional wooden buildings, curved roofs, fires, smoke, debris, dark red sky, and vivid magenta energy glow.\n\nsummary:\n[video continuation + reference generation] The target video is a 10.01-second audiovisual sequence connecting <Video 1> to <Video 2>. It begins with the complete opening segment of <Video 1>, continues by following the fighter's golden energy as it erupts through smoke and travels across the battlefield, then transforms the energy and environment until the composition converges naturally on the first frame of <Video 2>. The target ends by reproducing the complete final segment of <Video 2>.\n\nretention_analysis:\n<Video 1> ([Shot 1], 00:00.000–00:02.180): fully_preserved - its complete opening footage, fighter performance, energy effects, camera movement, timing, composition, and visual style are retained.\n<Video 2> ([Shot 5], 00:07.970–00:10.010): fully_preserved - its complete ending footage, burning town, smoke, magenta light, camera movement, timing, and final composition are retained.\n<Subject 1> (appears in [Shot 1], [Shot 2]): fully_preserved - the fighter's identity, hair, costume, body proportions, pose, and golden illumination remain consistent with <Video 1>.\n<Subject 2> (appears in [Shot 1], [Shot 2], [Shot 3], [Shot 4]): partially_preserved - the golden energy retains its shape, motion, particles, and brightness before gradually mixing with red and magenta light to establish the ending scene.\n<Subject 3> (emerges in [Shot 4] and appears in [Shot 5]): fully_preserved - the traditional architecture, fires, smoke, debris, night palette, and magenta glow converge precisely on <Video 2>.\n\ndetailed_description:\nThe target video maintains one coherent high-energy 2D anime action style with bold outlines, dynamic lighting, layered smoke, detailed effects animation, strong camera motion, and consistent image quality. The transition must feel like a continuous causal event rather than a dissolve between unrelated scenes.\n\n[Shot 1] From 00:00.000 to 00:02.180, reproduce <Video 1> completely. On a shattered rocky battlefield, <Subject 1>, the muscular spiky black-haired fighter in orange-and-dark-blue battle clothing, braces in a low stance as a huge golden aura erupts around his body. <Subject 2> forms sharp lightning-shaped peaks around him while yellow energy bolts, glowing particles, dust, and broken stones surge outward. The fiery blue-and-orange sky and all original camera motion, action timing, effects, and composition remain identical to <Video 1>.\n\n[Shot 2] At 00:02.180, continue directly from the exact final frame and motion of <Video 1>. The fighter drives both feet into the fractured ground and releases a stronger pulse. The camera pulls out with large amplitude at fast speed as a circular golden shock wave expands across the rocks. Dust clouds rise and partially obscure the fighter while one concentrated golden energy stream tears upward through the center of the frame.\n\n[Shot 3] At 00:04.150, the camera transitions into a fast tracking shot following the energy stream through dense smoke and turbulent clouds. Golden lightning branches across the dark sky. Glowing stones and embers rush past the lens, creating natural motion blur. As the stream travels forward, the blue sky darkens gradually to charcoal red; yellow particles mix progressively with orange fire embers and faint magenta sparks. The transition remains physical and continuous, without a wipe, fade, portal frame, or abrupt location change.\n\n[Shot 4] At 00:06.150, the camera breaks through the final smoke layer and tilts downward, revealing distant traditional East Asian rooftops beneath the energy trail. The golden stream descends toward the town and loses intensity. Its bright yellow core narrows while the surrounding light shifts gradually through orange and red into vivid magenta. Fires become visible along the wooden buildings, black smoke columns rise into the sky, and drifting battlefield dust transforms naturally into ash and burning debris. The fighter is no longer visible. The camera progressively approaches the exact height, angle, direction, architecture placement, fire pattern, smoke density, magenta-light position, and composition found in the opening frame of <Video 2>.\n\n[Shot 5] At 00:07.970, land precisely on the first frame of <Video 2> with no visible jump in camera position, brightness, smoke motion, fire animation, or object placement. From 00:07.970 to 00:10.010, reproduce <Video 2> completely: <Subject 3>, the burning ancient town under a dark red-black sky, fills the frame as flames spread through traditional buildings, smoke billows upward, embers drift across the scene, and the magenta energy glow remains visible among the ruins. Preserve all original motion, effects, framing, timing, and the final frame of <Video 2>. No additional characters, buildings, text, logos, watermarks, style changes, duplicated objects, sudden morphing, black frames, or crossfades.\n\noverall_soundscape:\nThe opening retains the energy roar, electrical crackles, flying debris, and heavy battlefield impacts associated with <Video 1>. Across the generated bridge, the energy roar moves upward and into the distance while wind, rushing smoke, falling debris, fire, collapsing wood, and drifting embers gradually take over. At 00:07.970, the soundscape must connect naturally to the ambience and synchronized sound of <Video 2> without a volume jump or silent gap.\n\nnon_diegetic_music:\nA fast low-string ostinato and sustained brass tone continue beneath the opening energy surge. Percussion grows during the airborne transition, then decreases as the camera reaches the burning town, aligning smoothly with any audience-only score present in <Video 2>.",
+        1344,
+        768,
+        10,
+        "match",
+        "{\"version\":3,\"fps\":24,\"selection\":{\"start\":0,\"duration\":10.011183880391053},\"videoAudioEnabled\":true,\"videoClips\":[{\"id\":\"mt9r33dj-433ucy\",\"file\":\"minimax_h3_timeline_director/1787727959773_124pe_MiniMax_H3_00033_(1).mp4\",\"name\":\"MiniMax_H3_00033_(1).mp4\",\"start\":0,\"duration\":2.183035599245902,\"trimStart\":7.941964400754098,\"sourceDuration\":10.125,\"hasAudio\":true,\"referenceMode\":\"guide\",\"peaks\":[0.25103315711021423,0.28370869159698486,0.2612301707267761,0.2191053330898285,0.3062261939048767,0.4142181873321533,0.38939815759658813,0.283797949552536,0.24252718687057495,0.24723811447620392,0.3144729733467102,0.27411922812461853,0.2265661507844925,0.1300894320011139,0.13847194612026215,0.20379191637039185,0.2657749652862549,0.2522750198841095,0.2698794901371002,0.2806006073951721,0.30860966444015503,0.3252708315849304,0.3215072751045227,0.28710269927978516,0.30163395404815674,0.34934908151626587,0.2748623192310333,0.23295161128044128,0.243366539478302,0.23908257484436035,0.19373929500579834,0.18298651278018951,0.2665606141090393,0.3893176317214966,0.3396552801132202,0.2227638065814972,0.26001667976379395,0.24345475435256958,0.2128012478351593,0.20004984736442566,0.16293731331825256,0.11824394017457962,0.14192989468574524,0.15293428301811218,0.13117799162864685,0.28131183981895447,0.30507463216781616,0.3319997787475586,0.3134264349937439,0.2684096395969391,0.290370374917984,0.2863903045654297,0.22573316097259521,0.2487756460905075,0.26447731256484985,0.26603424549102783,0.2491685450077057,0.34012824296951294,0.23598399758338928,0.2643517851829529,0.3071097731590271,0.2619667053222656,0.30309659242630005,0.26524654030799866,0.2096799612045288,0.21085146069526672,0.17016614973545074,0.1938231885433197,0.20785441994667053,0.167318195104599,0.15718775987625122,0.13691473007202148,0.1956995278596878,0.2744010090827942,0.28192609548568726,0.2664286494255066,0.3174479007720947,0.36604052782058716,0.3564192056655884,0.34890592098236084,0.3011922836303711,0.2882767617702484,0.36522388458251953,0.2990558445453644,0.33726876974105835,0.36906594038009644,0.3200165629386902,0.46376651525497437,0.48944440484046936,0.3890785276889801,0.38499128818511963,0.38365301489830017,0.4167954623699188,0.3418779671192169,0.39180129766464233,0.49894487857818604,0.496318519115448,0.4176681637763977,0.3977585732936859,0.4287981390953064,0.4920596480369568,0.4405604600906372,0.41874635219573975,0.3671559691429138,0.3856511414051056,0.49167799949645996,0.5488248467445374,0.29918429255485535,0.31442582607269287,0.3337514400482178,0.35374122858047485,0.402277410030365,0.3398924767971039,0.4274826645851135,0.49639981985092163,0.4757730960845947,0.3699936270713806,0.4066581130027771,0.3605940341949463,0.3738875985145569,0.29538077116012573,0.29079920053482056,0.3239239454269409,0.2425341159105301,0.2789241075515747,0.18537090718746185,0.24664002656936646,0.20475253462791443,0.31505221128463745,0.25483039021492004,0.21472525596618652,0.29997313022613525,0.21279846131801605,0.2452823668718338,0.21569421887397766,0.21603339910507202,0.40570223331451416,0.3706943988800049,0.34436869621276855,0.4285789132118225,0.4259546101093292,0.40510979294776917,0.4193214178085327,0.437890887260437,0.4764934182167053,0.4230195879936218,0.37715551257133484,0.3908275365829468,0.30258631706237793,0.29476290941238403,0.35293686389923096,0.32274430990219116,0.29582834243774414,0.31603074073791504,0.3281487822532654,0.3595958948135376,0.3263629674911499,0.28793221712112427,0.2256527841091156,0.24595756828784943,0.2807469367980957,0.277851402759552,0.27362775802612305,0.23599223792552948,0.23418593406677246,0.24401986598968506,0.26371416449546814,0.19252026081085205,0.30795878171920776,0.317941278219223,0.23812280595302582,0.2967725098133087,0.2763185501098633,0.26853564381599426,0.3257995843887329,0.29886841773986816,0.29561465978622437,0.24920403957366943,0.2555699944496155,0.2644081711769104],\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1787727959773_124pe_MiniMax_H3_00033_(1)_a3d699c78cd73f19.mp4\"},{\"id\":\"mt9r2slc-q49bob\",\"file\":\"minimax_h3_timeline_director/1787727973368_r5g7p_25步MiniMax_H3_00046_.mp4\",\"name\":\"25步MiniMax_H3_00046_.mp4\",\"start\":7.974315217411458,\"duration\":2.036868662979595,\"trimStart\":0,\"sourceDuration\":15.083333,\"hasAudio\":true,\"referenceMode\":\"guide\",\"peaks\":[0.1570606231689453,0.18381649255752563,0.1774975061416626,0.15382230281829834,0.16705837845802307,0.13515332341194153,0.20239412784576416,0.16232571005821228,0.19090870022773743,0.20412668585777283,0.21467557549476624,0.20048852264881134,0.18634335696697235,0.1923546940088272,0.19080521166324615,0.17845666408538818,0.2209121286869049,0.2232421487569809,0.20775368809700012,0.2263215333223343,0.2246417999267578,0.21371006965637207,0.201588973402977,0.19068977236747742,0.17192235589027405,0.20058263838291168,0.19664150476455688,0.18430876731872559,0.1870812177658081,0.2086467444896698,0.1870885193347931,0.20704740285873413,0.15622782707214355,0.18644306063652039,0.2017589807510376,0.18935532867908478,0.19527389109134674,0.20647422969341278,0.2998695373535156,0.24371092021465302,0.2843458652496338,0.29869019985198975,0.31937211751937866,0.2600064277648926,0.1921880543231964,0.3095701038837433,0.3239532709121704,0.2933453321456909,0.30202245712280273,0.2998529374599457,0.26888182759284973,0.1968129277229309,0.2840372920036316,0.25778529047966003,0.22926440834999084,0.24936102330684662,0.23382271826267242,0.3137800097465515,0.25198933482170105,0.22853708267211914,0.23096220195293427,0.24035272002220154,0.1880774199962616,0.25411683320999146,0.26938489079475403,0.2677749991416931,0.24105921387672424,0.2619584798812866,0.27482664585113525,0.2762517035007477,0.18242591619491577,0.23179739713668823,0.26832371950149536,0.24828442931175232,0.26931437849998474,0.2862616181373596,0.2451852560043335,0.2458450347185135,0.30134204030036926,0.24172663688659668,0.28550413250923157,0.2920929789543152,0.27957990765571594,0.3104928135871887,0.31630170345306396,0.3069455027580261,0.4266051650047302,0.24645566940307617,0.2616233825683594,0.3565721809864044,0.2712777554988861,0.24863481521606445,0.1969628632068634,0.23759490251541138,0.33748388290405273,0.27009862661361694,0.5803728103637695,0.4134370684623718,0.4249756336212158,0.3984662890434265,0.40546882152557373,0.423167884349823,0.43562471866607666,0.44018420577049255,0.3920934498310089,0.43237417936325073,0.4594932794570923,0.3916715383529663,0.2927324175834656,0.38098466396331787,0.38586899638175964,0.4816550612449646,0.38041648268699646,0.4639206528663635,0.4407883882522583,0.45722150802612305,0.41510647535324097,0.44135159254074097,0.4076898694038391,0.47140926122665405,0.4131687879562378,0.5273545980453491,0.4850165545940399,0.47443708777427673,0.440540611743927,0.4743131101131439,0.38025498390197754,0.4195100665092468,0.45292824506759644,0.48621052503585815,0.40380343794822693,0.5250109434127808,0.46222013235092163,0.6003661155700684,0.5393608808517456,0.40123313665390015,0.5096986293792725,0.3506131172180176,0.3639329671859741,0.3695070743560791,0.4798401892185211,0.43876710534095764,0.3749329447746277,0.4550234079360962,0.45999234914779663,0.31809359788894653,0.4184361696243286,0.433963418006897,0.4884583353996277,0.34175771474838257,0.4356001913547516,0.42421746253967285,0.3308502733707428,0.2784205973148346,0.5761545896530151,0.26984506845474243,0.28431910276412964,0.30520927906036377,0.3133273422718048,0.419964075088501,0.29615122079849243,0.31271862983703613,0.4146873354911804,0.2967182993888855,0.31336212158203125,0.3087974488735199,0.3821347653865814,0.28665390610694885,0.2819705605506897,0.29591962695121765,0.22497732937335968,0.2649681866168976,0.2958524227142334,0.4775182008743286,0.34810569882392883,0.2946770191192627,0.24602732062339783,0.23758283257484436,0.4979194402694702,0.39103877544403076],\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1787727973368_r5g7p_25步MiniMax_H3_00046__88ca4eda9f35a1de.mp4\"}],\"images\":[],\"audios\":[]}",
+        ""
       ],
       "widgets_values_named": {
-        "image": "ComfyUI_temp_kfovr_00045_.png",
-        "upload": "image"
+        "prompt": "subject_definitions:\n<Video 1> is the complete 2.18-second opening source segment aligned with 00:00.000–00:02.180 of the target video. It establishes the opening shot, animation style, fighter, rocky battlefield, golden energy, camera movement, action, lighting, and pacing.\n<Video 2> is the complete 2.04-second ending source segment aligned with 00:07.970–00:10.010 of the target video. It establishes the final shot, burning ancient East Asian town, dark smoky sky, fires, architecture, magenta energy light, camera movement, lighting, and ending composition.\n<Subject 1> is the spiky black-haired martial-arts fighter in <Video 1>, wearing orange-and-dark-blue battle clothing and surrounded by a bright golden energy aura.\n<Subject 2> is the golden energy released by <Subject 1>, including its lightning-shaped edges, luminous particles, shock waves, dust displacement, and intense yellow-orange illumination.\n<Subject 3> is the burning ancient East Asian town in <Video 2>, including its traditional wooden buildings, curved roofs, fires, smoke, debris, dark red sky, and vivid magenta energy glow.\n\nsummary:\n[video continuation + reference generation] The target video is a 10.01-second audiovisual sequence connecting <Video 1> to <Video 2>. It begins with the complete opening segment of <Video 1>, continues by following the fighter's golden energy as it erupts through smoke and travels across the battlefield, then transforms the energy and environment until the composition converges naturally on the first frame of <Video 2>. The target ends by reproducing the complete final segment of <Video 2>.\n\nretention_analysis:\n<Video 1> ([Shot 1], 00:00.000–00:02.180): fully_preserved - its complete opening footage, fighter performance, energy effects, camera movement, timing, composition, and visual style are retained.\n<Video 2> ([Shot 5], 00:07.970–00:10.010): fully_preserved - its complete ending footage, burning town, smoke, magenta light, camera movement, timing, and final composition are retained.\n<Subject 1> (appears in [Shot 1], [Shot 2]): fully_preserved - the fighter's identity, hair, costume, body proportions, pose, and golden illumination remain consistent with <Video 1>.\n<Subject 2> (appears in [Shot 1], [Shot 2], [Shot 3], [Shot 4]): partially_preserved - the golden energy retains its shape, motion, particles, and brightness before gradually mixing with red and magenta light to establish the ending scene.\n<Subject 3> (emerges in [Shot 4] and appears in [Shot 5]): fully_preserved - the traditional architecture, fires, smoke, debris, night palette, and magenta glow converge precisely on <Video 2>.\n\ndetailed_description:\nThe target video maintains one coherent high-energy 2D anime action style with bold outlines, dynamic lighting, layered smoke, detailed effects animation, strong camera motion, and consistent image quality. The transition must feel like a continuous causal event rather than a dissolve between unrelated scenes.\n\n[Shot 1] From 00:00.000 to 00:02.180, reproduce <Video 1> completely. On a shattered rocky battlefield, <Subject 1>, the muscular spiky black-haired fighter in orange-and-dark-blue battle clothing, braces in a low stance as a huge golden aura erupts around his body. <Subject 2> forms sharp lightning-shaped peaks around him while yellow energy bolts, glowing particles, dust, and broken stones surge outward. The fiery blue-and-orange sky and all original camera motion, action timing, effects, and composition remain identical to <Video 1>.\n\n[Shot 2] At 00:02.180, continue directly from the exact final frame and motion of <Video 1>. The fighter drives both feet into the fractured ground and releases a stronger pulse. The camera pulls out with large amplitude at fast speed as a circular golden shock wave expands across the rocks. Dust clouds rise and partially obscure the fighter while one concentrated golden energy stream tears upward through the center of the frame.\n\n[Shot 3] At 00:04.150, the camera transitions into a fast tracking shot following the energy stream through dense smoke and turbulent clouds. Golden lightning branches across the dark sky. Glowing stones and embers rush past the lens, creating natural motion blur. As the stream travels forward, the blue sky darkens gradually to charcoal red; yellow particles mix progressively with orange fire embers and faint magenta sparks. The transition remains physical and continuous, without a wipe, fade, portal frame, or abrupt location change.\n\n[Shot 4] At 00:06.150, the camera breaks through the final smoke layer and tilts downward, revealing distant traditional East Asian rooftops beneath the energy trail. The golden stream descends toward the town and loses intensity. Its bright yellow core narrows while the surrounding light shifts gradually through orange and red into vivid magenta. Fires become visible along the wooden buildings, black smoke columns rise into the sky, and drifting battlefield dust transforms naturally into ash and burning debris. The fighter is no longer visible. The camera progressively approaches the exact height, angle, direction, architecture placement, fire pattern, smoke density, magenta-light position, and composition found in the opening frame of <Video 2>.\n\n[Shot 5] At 00:07.970, land precisely on the first frame of <Video 2> with no visible jump in camera position, brightness, smoke motion, fire animation, or object placement. From 00:07.970 to 00:10.010, reproduce <Video 2> completely: <Subject 3>, the burning ancient town under a dark red-black sky, fills the frame as flames spread through traditional buildings, smoke billows upward, embers drift across the scene, and the magenta energy glow remains visible among the ruins. Preserve all original motion, effects, framing, timing, and the final frame of <Video 2>. No additional characters, buildings, text, logos, watermarks, style changes, duplicated objects, sudden morphing, black frames, or crossfades.\n\noverall_soundscape:\nThe opening retains the energy roar, electrical crackles, flying debris, and heavy battlefield impacts associated with <Video 1>. Across the generated bridge, the energy roar moves upward and into the distance while wind, rushing smoke, falling debris, fire, collapsing wood, and drifting embers gradually take over. At 00:07.970, the soundscape must connect naturally to the ambience and synchronized sound of <Video 2> without a volume jump or silent gap.\n\nnon_diegetic_music:\nA fast low-string ostinato and sustained brass tone continue beneath the opening energy surge. Percussion grows during the airborne transition, then decreases as the camera reaches the burning town, aligning smoothly with any audience-only score present in <Video 2>.",
+        "width": 1344,
+        "height": 768,
+        "generation_seconds": 10,
+        "ref_image_size": "match",
+        "timeline_data": "{\"version\":3,\"fps\":24,\"selection\":{\"start\":0,\"duration\":10.011183880391053},\"videoAudioEnabled\":true,\"videoClips\":[{\"id\":\"mt9r33dj-433ucy\",\"file\":\"minimax_h3_timeline_director/1787727959773_124pe_MiniMax_H3_00033_(1).mp4\",\"name\":\"MiniMax_H3_00033_(1).mp4\",\"start\":0,\"duration\":2.183035599245902,\"trimStart\":7.941964400754098,\"sourceDuration\":10.125,\"hasAudio\":true,\"referenceMode\":\"guide\",\"peaks\":[0.25103315711021423,0.28370869159698486,0.2612301707267761,0.2191053330898285,0.3062261939048767,0.4142181873321533,0.38939815759658813,0.283797949552536,0.24252718687057495,0.24723811447620392,0.3144729733467102,0.27411922812461853,0.2265661507844925,0.1300894320011139,0.13847194612026215,0.20379191637039185,0.2657749652862549,0.2522750198841095,0.2698794901371002,0.2806006073951721,0.30860966444015503,0.3252708315849304,0.3215072751045227,0.28710269927978516,0.30163395404815674,0.34934908151626587,0.2748623192310333,0.23295161128044128,0.243366539478302,0.23908257484436035,0.19373929500579834,0.18298651278018951,0.2665606141090393,0.3893176317214966,0.3396552801132202,0.2227638065814972,0.26001667976379395,0.24345475435256958,0.2128012478351593,0.20004984736442566,0.16293731331825256,0.11824394017457962,0.14192989468574524,0.15293428301811218,0.13117799162864685,0.28131183981895447,0.30507463216781616,0.3319997787475586,0.3134264349937439,0.2684096395969391,0.290370374917984,0.2863903045654297,0.22573316097259521,0.2487756460905075,0.26447731256484985,0.26603424549102783,0.2491685450077057,0.34012824296951294,0.23598399758338928,0.2643517851829529,0.3071097731590271,0.2619667053222656,0.30309659242630005,0.26524654030799866,0.2096799612045288,0.21085146069526672,0.17016614973545074,0.1938231885433197,0.20785441994667053,0.167318195104599,0.15718775987625122,0.13691473007202148,0.1956995278596878,0.2744010090827942,0.28192609548568726,0.2664286494255066,0.3174479007720947,0.36604052782058716,0.3564192056655884,0.34890592098236084,0.3011922836303711,0.2882767617702484,0.36522388458251953,0.2990558445453644,0.33726876974105835,0.36906594038009644,0.3200165629386902,0.46376651525497437,0.48944440484046936,0.3890785276889801,0.38499128818511963,0.38365301489830017,0.4167954623699188,0.3418779671192169,0.39180129766464233,0.49894487857818604,0.496318519115448,0.4176681637763977,0.3977585732936859,0.4287981390953064,0.4920596480369568,0.4405604600906372,0.41874635219573975,0.3671559691429138,0.3856511414051056,0.49167799949645996,0.5488248467445374,0.29918429255485535,0.31442582607269287,0.3337514400482178,0.35374122858047485,0.402277410030365,0.3398924767971039,0.4274826645851135,0.49639981985092163,0.4757730960845947,0.3699936270713806,0.4066581130027771,0.3605940341949463,0.3738875985145569,0.29538077116012573,0.29079920053482056,0.3239239454269409,0.2425341159105301,0.2789241075515747,0.18537090718746185,0.24664002656936646,0.20475253462791443,0.31505221128463745,0.25483039021492004,0.21472525596618652,0.29997313022613525,0.21279846131801605,0.2452823668718338,0.21569421887397766,0.21603339910507202,0.40570223331451416,0.3706943988800049,0.34436869621276855,0.4285789132118225,0.4259546101093292,0.40510979294776917,0.4193214178085327,0.437890887260437,0.4764934182167053,0.4230195879936218,0.37715551257133484,0.3908275365829468,0.30258631706237793,0.29476290941238403,0.35293686389923096,0.32274430990219116,0.29582834243774414,0.31603074073791504,0.3281487822532654,0.3595958948135376,0.3263629674911499,0.28793221712112427,0.2256527841091156,0.24595756828784943,0.2807469367980957,0.277851402759552,0.27362775802612305,0.23599223792552948,0.23418593406677246,0.24401986598968506,0.26371416449546814,0.19252026081085205,0.30795878171920776,0.317941278219223,0.23812280595302582,0.2967725098133087,0.2763185501098633,0.26853564381599426,0.3257995843887329,0.29886841773986816,0.29561465978622437,0.24920403957366943,0.2555699944496155,0.2644081711769104],\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1787727959773_124pe_MiniMax_H3_00033_(1)_a3d699c78cd73f19.mp4\"},{\"id\":\"mt9r2slc-q49bob\",\"file\":\"minimax_h3_timeline_director/1787727973368_r5g7p_25步MiniMax_H3_00046_.mp4\",\"name\":\"25步MiniMax_H3_00046_.mp4\",\"start\":7.974315217411458,\"duration\":2.036868662979595,\"trimStart\":0,\"sourceDuration\":15.083333,\"hasAudio\":true,\"referenceMode\":\"guide\",\"peaks\":[0.1570606231689453,0.18381649255752563,0.1774975061416626,0.15382230281829834,0.16705837845802307,0.13515332341194153,0.20239412784576416,0.16232571005821228,0.19090870022773743,0.20412668585777283,0.21467557549476624,0.20048852264881134,0.18634335696697235,0.1923546940088272,0.19080521166324615,0.17845666408538818,0.2209121286869049,0.2232421487569809,0.20775368809700012,0.2263215333223343,0.2246417999267578,0.21371006965637207,0.201588973402977,0.19068977236747742,0.17192235589027405,0.20058263838291168,0.19664150476455688,0.18430876731872559,0.1870812177658081,0.2086467444896698,0.1870885193347931,0.20704740285873413,0.15622782707214355,0.18644306063652039,0.2017589807510376,0.18935532867908478,0.19527389109134674,0.20647422969341278,0.2998695373535156,0.24371092021465302,0.2843458652496338,0.29869019985198975,0.31937211751937866,0.2600064277648926,0.1921880543231964,0.3095701038837433,0.3239532709121704,0.2933453321456909,0.30202245712280273,0.2998529374599457,0.26888182759284973,0.1968129277229309,0.2840372920036316,0.25778529047966003,0.22926440834999084,0.24936102330684662,0.23382271826267242,0.3137800097465515,0.25198933482170105,0.22853708267211914,0.23096220195293427,0.24035272002220154,0.1880774199962616,0.25411683320999146,0.26938489079475403,0.2677749991416931,0.24105921387672424,0.2619584798812866,0.27482664585113525,0.2762517035007477,0.18242591619491577,0.23179739713668823,0.26832371950149536,0.24828442931175232,0.26931437849998474,0.2862616181373596,0.2451852560043335,0.2458450347185135,0.30134204030036926,0.24172663688659668,0.28550413250923157,0.2920929789543152,0.27957990765571594,0.3104928135871887,0.31630170345306396,0.3069455027580261,0.4266051650047302,0.24645566940307617,0.2616233825683594,0.3565721809864044,0.2712777554988861,0.24863481521606445,0.1969628632068634,0.23759490251541138,0.33748388290405273,0.27009862661361694,0.5803728103637695,0.4134370684623718,0.4249756336212158,0.3984662890434265,0.40546882152557373,0.423167884349823,0.43562471866607666,0.44018420577049255,0.3920934498310089,0.43237417936325073,0.4594932794570923,0.3916715383529663,0.2927324175834656,0.38098466396331787,0.38586899638175964,0.4816550612449646,0.38041648268699646,0.4639206528663635,0.4407883882522583,0.45722150802612305,0.41510647535324097,0.44135159254074097,0.4076898694038391,0.47140926122665405,0.4131687879562378,0.5273545980453491,0.4850165545940399,0.47443708777427673,0.440540611743927,0.4743131101131439,0.38025498390197754,0.4195100665092468,0.45292824506759644,0.48621052503585815,0.40380343794822693,0.5250109434127808,0.46222013235092163,0.6003661155700684,0.5393608808517456,0.40123313665390015,0.5096986293792725,0.3506131172180176,0.3639329671859741,0.3695070743560791,0.4798401892185211,0.43876710534095764,0.3749329447746277,0.4550234079360962,0.45999234914779663,0.31809359788894653,0.4184361696243286,0.433963418006897,0.4884583353996277,0.34175771474838257,0.4356001913547516,0.42421746253967285,0.3308502733707428,0.2784205973148346,0.5761545896530151,0.26984506845474243,0.28431910276412964,0.30520927906036377,0.3133273422718048,0.419964075088501,0.29615122079849243,0.31271862983703613,0.4146873354911804,0.2967182993888855,0.31336212158203125,0.3087974488735199,0.3821347653865814,0.28665390610694885,0.2819705605506897,0.29591962695121765,0.22497732937335968,0.2649681866168976,0.2958524227142334,0.4775182008743286,0.34810569882392883,0.2946770191192627,0.24602732062339783,0.23758283257484436,0.4979194402694702,0.39103877544403076],\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1787727973368_r5g7p_25步MiniMax_H3_00046__88ca4eda9f35a1de.mp4\"}],\"images\":[],\"audios\":[]}",
+        "minimax_h3_timeline": ""
       }
     }
   ],
@@ -1357,78 +981,6 @@
       "VIDEO"
     ],
     [
-      261,
-      132,
-      0,
-      131,
-      0,
-      "FLOAT"
-    ],
-    [
-      270,
-      136,
-      0,
-      126,
-      1,
-      "CONDITIONING"
-    ],
-    [
-      271,
-      136,
-      1,
-      125,
-      4,
-      "LATENT"
-    ],
-    [
-      272,
-      128,
-      0,
-      136,
-      0,
-      "CLIP"
-    ],
-    [
-      273,
-      119,
-      0,
-      136,
-      1,
-      "VAE"
-    ],
-    [
-      274,
-      120,
-      0,
-      136,
-      2,
-      "VAE"
-    ],
-    [
-      275,
-      132,
-      0,
-      136,
-      6,
-      "FLOAT"
-    ],
-    [
-      276,
-      115,
-      0,
-      136,
-      4,
-      "INT"
-    ],
-    [
-      277,
-      115,
-      1,
-      136,
-      5,
-      "INT"
-    ],
-    [
       280,
       125,
       0,
@@ -1461,47 +1013,23 @@
       "INT"
     ],
     [
-      287,
-      138,
+      328,
+      121,
       0,
-      136,
-      3,
-      "STRING"
-    ],
-    [
-      316,
-      164,
-      0,
-      124,
-      0,
-      "MODEL"
-    ],
-    [
-      317,
-      164,
-      0,
-      126,
-      0,
-      "MODEL"
-    ],
-    [
-      331,
-      178,
-      0,
-      164,
-      0,
-      "MODEL"
+      130,
+      1,
+      "AUDIO"
     ],
     [
       332,
       127,
       0,
-      178,
+      177,
       0,
       "MODEL"
     ],
     [
-      333,
+      341,
       179,
       0,
       125,
@@ -1509,12 +1037,76 @@
       "SAMPLER"
     ],
     [
-      341,
-      188,
-      2,
-      130,
+      344,
+      184,
+      0,
+      126,
       1,
-      "AUDIO"
+      "CONDITIONING"
+    ],
+    [
+      345,
+      184,
+      1,
+      125,
+      4,
+      "LATENT"
+    ],
+    [
+      346,
+      128,
+      0,
+      184,
+      0,
+      "CLIP"
+    ],
+    [
+      347,
+      119,
+      0,
+      184,
+      1,
+      "VAE"
+    ],
+    [
+      348,
+      120,
+      0,
+      184,
+      2,
+      "VAE"
+    ],
+    [
+      349,
+      115,
+      0,
+      184,
+      3,
+      "INT"
+    ],
+    [
+      350,
+      115,
+      1,
+      184,
+      4,
+      "INT"
+    ],
+    [
+      351,
+      177,
+      0,
+      124,
+      0,
+      "MODEL"
+    ],
+    [
+      352,
+      177,
+      0,
+      126,
+      0,
+      "MODEL"
     ]
   ],
   "groups": [
@@ -1534,8 +1126,8 @@
       "id": 2,
       "title": "Sampling",
       "bounding": [
-        -280,
-        4840,
+        136.29100926618636,
+        4834.271224643126,
         690,
         670
       ],
@@ -1558,8 +1150,8 @@
       "id": 4,
       "title": "Decoding and create video",
       "bounding": [
-        440,
-        4840,
+        888.501561617095,
+        4839.100440233215,
         670,
         670
       ],
@@ -1582,10 +1174,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.3593873216339029,
+      "scale": 0.5760393442623514,
       "offset": [
-        3205.8864623674363,
-        -3748.200508887279
+        1866.180854486535,
+        -4667.791170538633
       ]
     },
     "frontendVersion": "1.49.6",
@@ -1594,6 +1186,10 @@
     "VHS_MetadataImage": true,
     "VHS_KeepIntermediate": true,
     "anomalous_hashes": {
+      "127_minimax_h3_ref2va_int8_convrot.safetensors": {
+        "hash": "",
+        "size": 34038894550
+      },
       "119_minimax_h3_video_vae_fp16.safetensors": {
         "hash": "",
         "size": 5207808496
@@ -1602,13 +1198,9 @@
         "hash": "",
         "size": 605254808
       },
-      "127_minimax_h3_ref2va_int8_convrot.safetensors": {
+      "177_minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors": {
         "hash": "",
-        "size": 34038894550
-      },
-      "178_minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors": {
-        "hash": "",
-        "size": 1956193000
+        "size": 440873704
       }
     }
   },
