@@ -4,8 +4,8 @@ The UI stores an edit decision list (EDL) in ``timeline_data``.  At queue time
 this module resolves the current generation selection into H3 references and
 native ``MiniMaxH3AddGuide`` keyframe guides:
 
-* source portions outside a crossed selection edge become reference videos;
-* the portions overlapping the generated range become fixed guide clips;
+* only the portions overlapping the generated range become reference videos;
+* those same overlapping portions may become fixed guide clips;
 * a gap between two clips uses native first/last single-frame guides;
 * standalone image and audio assets are forwarded as references.
 """
@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib
+import inspect
 import json
 import logging
 import math
 import os
 import re
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 from typing import Any, Iterable
@@ -32,6 +35,8 @@ from PIL import Image, ImageOps
 
 import folder_paths
 import node_helpers
+from comfy_api.input_impl import VideoFromFile
+from comfy_api.input import VideoInput
 from comfy_api.latest import io
 from comfy_extras import nodes_minimax_h3 as h3_nodes
 from server import PromptServer
@@ -49,6 +54,196 @@ PREVIEW_SUBDIR = f"{UPLOAD_SUBDIR}/preview_proxies"
 PREVIEW_MAX_WIDTH = 480
 PREVIEW_MAX_HEIGHT = 270
 PREVIEW_FPS = 12
+
+TimelinePlan = io.Custom("MINIMAX_H3_TIMELINE_PLAN")
+PromptMediaBundle = io.Custom("MINIMAX_H3_OMNI_MEDIA_BUNDLE")
+PROMPT_REWRITER_OPTIONS = io.Custom("H3_REWRITER_OPTIONS")
+OMNI_REWRITER_DIRECTORY = "MiniMax-H3-Prompt-Rewriter-ComfyUI"
+OMNI_MISSING_MODEL = "请先安装 MiniMax-H3-Prompt-Rewriter-ComfyUI"
+# 桥节点已按该上游版本验证。主/次版本不匹配时只给出警告(新版本往往向后兼容),
+# 但 arrange/rewrite_omni 等接口的调用失败会被捕获并转换为可读的兼容性提示。
+OMNI_ADAPTED_VERSION = "0.17"
+
+
+class TrimmedTimelineVideo(VideoInput):
+    """A standard VIDEO that cannot leak its untrimmed source to consumers.
+
+    MiniMax-H3 Prompt Rewriter Omni intentionally reaches into a plain
+    ``VideoFromFile`` to sample the original path quickly.  That optimization
+    bypasses ``start_time`` and ``duration``.  This wrapper exposes only the
+    standard ``VideoInput`` surface, so Omni falls back to ``save_to`` and sees
+    exactly the same trimmed interval later encoded as ``ref_video_N``.
+    """
+
+    def __init__(self, path: str, start_time: float, duration: float):
+        self._path = str(path)
+        self._start_time = max(0.0, float(start_time))
+        self._duration = max(0.0, float(duration))
+        self._delegate = VideoFromFile(
+            self._path, start_time=self._start_time, duration=self._duration
+        )
+
+    def get_components(self):
+        return self._delegate.get_components()
+
+    def save_to(self, path, format=None, codec=None, metadata=None, bit_depth=None, crf=None, color_space=None):
+        kwargs = {
+            "metadata": metadata,
+            "bit_depth": bit_depth,
+            "crf": crf,
+            "color_space": color_space,
+        }
+        if format is not None:
+            kwargs["format"] = format
+        if codec is not None:
+            kwargs["codec"] = codec
+        return self._delegate.save_to(path, **kwargs)
+
+    def as_trimmed(self, start_time=None, duration=None, strict_duration=False):
+        relative_start = max(0.0, float(start_time or 0.0))
+        if relative_start >= self._duration:
+            return None
+        available = self._duration - relative_start
+        requested = available if duration is None or float(duration) <= 0 else float(duration)
+        if strict_duration and requested > available:
+            return None
+        return TrimmedTimelineVideo(
+            self._path, self._start_time + relative_start, min(requested, available)
+        )
+
+    def get_active_trim_window(self) -> tuple[float, float]:
+        return self._start_time, self._duration
+
+    def get_dimensions(self):
+        return self._delegate.get_dimensions()
+
+    def get_bit_depth(self):
+        return self._delegate.get_bit_depth()
+
+    def get_color_space(self):
+        return self._delegate.get_color_space()
+
+    def get_duration(self):
+        return self._duration
+
+    def get_frame_count(self):
+        return self._delegate.get_frame_count()
+
+    def get_frame_rate(self):
+        return self._delegate.get_frame_rate()
+
+    def get_container_format(self):
+        return self._delegate.get_container_format()
+
+
+def _load_omni_rewriter():
+    """Load the optional Prompt Rewriter plugin without making it mandatory."""
+
+    try:
+        return importlib.import_module("minimax_h3_rewriter.writer_omni")
+    except ModuleNotFoundError as first_error:
+        for custom_nodes_root in folder_paths.get_folder_paths("custom_nodes"):
+            candidate = Path(custom_nodes_root) / OMNI_REWRITER_DIRECTORY
+            if candidate.is_dir() and str(candidate) not in sys.path:
+                sys.path.insert(0, str(candidate))
+                try:
+                    return importlib.import_module("minimax_h3_rewriter.writer_omni")
+                except ModuleNotFoundError:
+                    continue
+        raise RuntimeError(
+            "缺少 MiniMax-H3-Prompt-Rewriter-ComfyUI；请先安装后再使用 H3 Omni 素材包提示词桥。"
+        ) from first_error
+
+
+def _omni_version() -> str:
+    """Best-effort version of the installed rewriter plugin ('' when unknown)."""
+
+    try:
+        module = _load_omni_rewriter()
+        root = Path(module.__file__).resolve().parents[1]
+        pyproject = root / "pyproject.toml"
+        if pyproject.is_file():
+            import tomllib
+
+            with pyproject.open("rb") as handle:
+                data = tomllib.load(handle)
+            project = data.get("project") or data.get("tool", {}).get("poetry", {})
+            version = project.get("version")
+            if version:
+                return str(version)
+    except Exception:
+        pass
+    return ""
+
+
+def _omni_compatibility_warning() -> str | None:
+    """Explain when the installed rewriter version is not the one this bridge targets."""
+
+    installed = _omni_version()
+    if not installed:
+        return None
+    if tuple(installed.split(".")[:2]) == tuple(OMNI_ADAPTED_VERSION.split(".")):
+        return None
+    return (
+        f"检测到 MiniMax-H3-Prompt-Rewriter-ComfyUI v{installed}，"
+        f"而 Omni 素材包提示词桥按 v{OMNI_ADAPTED_VERSION} 适配。"
+        "若执行失败，请锁定安装 v0.17.x 版本。"
+    )
+
+
+def _omni_interface_error(operation: str, exc: Exception) -> RuntimeError:
+    installed = _omni_version() or "未知"
+    return RuntimeError(
+        f"MiniMax-H3-Prompt-Rewriter-ComfyUI v{installed} 与 Omni 素材包提示词桥"
+        f"（按 v{OMNI_ADAPTED_VERSION} 适配）接口不兼容：{operation} 失败：{exc}。\n"
+        "建议：将该插件锁定到 v0.17.x，或升级本插件后再重试。"
+    )
+
+
+def _call_omni_rewrite(module, **kwargs):
+    """Call rewrite_omni with only the keyword arguments the installed version accepts.
+
+    Newer versions may rename or drop parameters; passing only the parameters
+    present in the live signature keeps a minor upstream drift from crashing.
+    """
+
+    signature = inspect.signature(module.rewrite_omni)
+    accepted = {
+        name
+        for name, parameter in signature.parameters.items()
+        if parameter.kind
+        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+    }
+    filtered = {name: value for name, value in kwargs.items() if name in accepted}
+    dropped = sorted(set(kwargs) - set(filtered))
+    if dropped:
+        log.warning("Omni rewrite_omni 忽略未声明参数: %s", ", ".join(dropped))
+    return module.rewrite_omni(**filtered)
+
+
+def _omni_schema_choices() -> tuple[list[str], list[str], list[str]]:
+    try:
+        module = _load_omni_rewriter()
+        return (
+            [str(value).upper() for value in module.TASKS],
+            [str(value) for value in module.model_choices()],
+            [str(value) for value in module.QUANTIZATIONS],
+        )
+    except Exception:
+        return ["REF2AV"], [OMNI_MISSING_MODEL], ["nf4", "int8", "bfloat16", "float16"]
+
+
+def _closest_omni_resolution(width: int, height: int) -> str:
+    choices = {
+        "21:9": 21 / 9,
+        "16:9": 16 / 9,
+        "4:3": 4 / 3,
+        "1:1": 1.0,
+        "3:4": 3 / 4,
+        "9:16": 9 / 16,
+    }
+    ratio = max(1, int(width)) / max(1, int(height))
+    return min(choices, key=lambda name: abs(math.log(ratio / choices[name])))
 
 
 def _upload_root() -> Path:
@@ -479,6 +674,232 @@ def _reference_mode(clip: dict[str, Any]) -> str:
     return mode if mode in {"guide", "edit", "boundary"} else "guide"
 
 
+def _video_reference_specs(timeline: dict[str, Any]) -> list[dict[str, Any]]:
+    """Describe prompt-addressable videos without decoding their frames.
+
+    This is shared by the material planner and the H3 encoder, so ``Video N``
+    exposed to a prompt rewriter is guaranteed to be the same source interval
+    later encoded as ``ref_video_N``.  A clip contributes only its intersection
+    with the cyan generation selection; frames outside that intersection never
+    enter prompt rewriting, reference encoding, or per-clip guides.
+    """
+
+    clips = [c for c in timeline.get("videoClips", []) if isinstance(c, dict) and c.get("file")]
+    selection = timeline.get("selection") or {}
+    selection_start = max(0.0, _float(selection.get("start")))
+    selection_duration = max(MIN_REF_VIDEO_SECONDS, _float(selection.get("duration"), 5.0))
+    selection_end = selection_start + selection_duration
+    audio_enabled = timeline.get("videoAudioEnabled", True) is not False
+    specs: list[dict[str, Any]] = []
+
+    for clip in sorted(clips, key=lambda c: _float(c.get("start"))):
+        clip_start, clip_end = _float(clip.get("start")), _clip_end(clip)
+        overlap_start = max(selection_start, clip_start)
+        overlap_end = min(selection_end, clip_end)
+        if overlap_end - overlap_start <= 0:
+            continue
+
+        overlap_source_start = _source_time(clip, overlap_start)
+        for source_start, piece_duration in _windows(
+            overlap_source_start, overlap_end - overlap_start
+        ):
+            timeline_piece_start = overlap_start + source_start - overlap_source_start
+            specs.append({
+                "file": str(clip["file"]),
+                "name": str(clip.get("name") or Path(str(clip["file"])).name),
+                "clip_id": clip.get("id"),
+                "timeline_start": timeline_piece_start,
+                "timeline_end": timeline_piece_start + piece_duration,
+                "source_start": source_start,
+                "duration": piece_duration,
+                "has_audio": audio_enabled and clip.get("hasAudio", True) is not False,
+            })
+            if len(specs) >= MAX_REF_VIDEOS:
+                return specs
+    return specs
+
+
+def _create_timeline_plan(
+    timeline_data: str, width: Any, height: Any, generation_seconds: Any
+) -> dict[str, Any]:
+    """Create the lightweight, serializable half of the split-node workflow."""
+
+    timeline = _parse_timeline(timeline_data)
+    target_width, target_height = int(width), int(height)
+    seconds = max(MIN_REF_VIDEO_SECONDS, _float(generation_seconds, 5.0))
+    selection = timeline.setdefault("selection", {})
+    selection["start"] = max(0.0, _float(selection.get("start")))
+    # The visible duration widget is authoritative.  Persisting it into the
+    # plan also prevents a stale hidden timeline value from shifting guides.
+    selection["duration"] = seconds
+    return {
+        "type": "MINIMAX_H3_TIMELINE_PLAN",
+        "version": 1,
+        "timeline": timeline,
+        "width": target_width,
+        "height": target_height,
+        "generation_seconds": seconds,
+        "length": _aligned_h3_length(seconds),
+    }
+
+
+def _require_timeline_plan(plan: Any) -> dict[str, Any]:
+    if not isinstance(plan, dict) or plan.get("type") != "MINIMAX_H3_TIMELINE_PLAN":
+        raise ValueError("输入不是有效的 MiniMax H3 时间线素材规划。")
+    if not isinstance(plan.get("timeline"), dict):
+        raise ValueError("素材规划缺少时间线数据。")
+    return plan
+
+
+def _preview_canvas(width: int, height: int, edge: int = 480) -> tuple[int, int]:
+    width, height = max(1, int(width)), max(1, int(height))
+    scale = min(1.0, edge / width, edge / height)
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
+def _plan_prompt_media(plan: dict[str, Any]) -> tuple[list[Any], list[Any], list[Any], list[Any]]:
+    """Materialize only the small media surfaces needed by prompt rewriters."""
+
+    plan = _require_timeline_plan(plan)
+    timeline = plan["timeline"]
+    preview_width, preview_height = _preview_canvas(plan["width"], plan["height"])
+
+    pictures: list[Any] = []
+    for asset in timeline.get("images", []):
+        if len(pictures) >= MAX_REF_IMAGES:
+            break
+        if isinstance(asset, dict) and asset.get("file"):
+            pictures.append(_load_image(
+                _safe_input_path(str(asset["file"])), preview_width, preview_height
+            ))
+
+    video_specs = _video_reference_specs(timeline)
+    videos: list[Any] = [
+        TrimmedTimelineVideo(
+            str(_safe_input_path(spec["file"])),
+            float(spec["source_start"]),
+            float(spec["duration"]),
+        )
+        for spec in video_specs
+    ]
+
+    standalone_audios: list[Any] = []
+    for asset in timeline.get("audios", []):
+        if len(standalone_audios) >= MAX_REF_AUDIOS:
+            break
+        if not isinstance(asset, dict) or not asset.get("file"):
+            continue
+        audio = _decode_audio(
+            _safe_input_path(str(asset["file"])),
+            max(0.0, _float(asset.get("trimStart"))),
+            _float(asset.get("duration")) or None,
+        )
+        if audio is not None:
+            standalone_audios.append(audio)
+
+    paired_audios: list[Any] = []
+    for spec in video_specs:
+        if not spec["has_audio"]:
+            paired_audios.append(None)
+            continue
+        paired_audios.append(_decode_audio(
+            _safe_input_path(spec["file"]), spec["source_start"], spec["duration"]
+        ))
+
+    return pictures, videos, standalone_audios, paired_audios
+
+
+def _create_prompt_media_bundle(plan: dict[str, Any]) -> dict[str, Any]:
+    """Package ordered heterogeneous media behind one compact ComfyUI socket."""
+
+    plan = _require_timeline_plan(plan)
+    pictures, videos, standalone_audios, paired_audios = _plan_prompt_media(plan)
+    items: list[dict[str, Any]] = []
+    for index, value in enumerate(pictures, 1):
+        items.append({"kind": "image", "label": f"<Picture {index}>", "value": value})
+    for index, value in enumerate(videos, 1):
+        items.append({"kind": "video", "label": f"<Video {index}>", "value": value})
+
+    audio_index = 0
+    for value in standalone_audios:
+        audio_index += 1
+        items.append({"kind": "audio", "label": f"<Audio {audio_index}>", "value": value})
+    for value in paired_audios:
+        if value is None:
+            continue
+        audio_index += 1
+        items.append({"kind": "audio", "label": f"<Audio {audio_index}>", "value": value})
+
+    return {
+        "type": "MINIMAX_H3_OMNI_MEDIA_BUNDLE",
+        "version": 1,
+        "items": items,
+        "manifest": _reference_manifest(plan),
+        "generation_seconds": float(plan["generation_seconds"]),
+        "width": int(plan["width"]),
+        "height": int(plan["height"]),
+    }
+
+
+def _require_prompt_media_bundle(bundle: Any) -> dict[str, Any]:
+    if not isinstance(bundle, dict) or bundle.get("type") != "MINIMAX_H3_OMNI_MEDIA_BUNDLE":
+        raise ValueError("输入不是有效的 MiniMax H3 Omni 素材包。")
+    items = bundle.get("items")
+    if not isinstance(items, list):
+        raise ValueError("Omni素材包缺少有序媒体列表。")
+    return bundle
+
+
+def _reference_manifest(plan: dict[str, Any]) -> str:
+    """Human-readable label map shared with prompt-writing nodes and agents."""
+
+    plan = _require_timeline_plan(plan)
+    timeline = plan["timeline"]
+    lines = [
+        "MiniMax H3 时间线素材规划（标签顺序与H3编码器完全一致）",
+        f"目标：{plan['width']}x{plan['height']}，{plan['generation_seconds']:.3f}秒，{plan['length']}帧",
+    ]
+    picture_index = 0
+    for asset in timeline.get("images", []):
+        if picture_index >= MAX_REF_IMAGES:
+            break
+        if isinstance(asset, dict) and asset.get("file"):
+            picture_index += 1
+            lines.append(f"<Picture {picture_index}> = {asset.get('name') or Path(str(asset['file'])).name}")
+
+    video_specs = _video_reference_specs(timeline)
+    for index, spec in enumerate(video_specs, 1):
+        end = spec["source_start"] + spec["duration"]
+        lines.append(
+            f"<Video {index}> = {spec['name']}，源 {spec['source_start']:.3f}s–{end:.3f}s"
+        )
+
+    audio_index = 0
+    for asset in timeline.get("audios", []):
+        if audio_index >= MAX_REF_AUDIOS:
+            break
+        if isinstance(asset, dict) and asset.get("file"):
+            audio_index += 1
+            lines.append(f"<Audio {audio_index}> = 独立音频 {asset.get('name') or Path(str(asset['file'])).name}")
+    for video_index, spec in enumerate(video_specs, 1):
+        if spec["has_audio"]:
+            audio_index += 1
+            lines.append(f"<Audio {audio_index}> = <Video {video_index}> 对应原声")
+
+    total_rewriter_media = picture_index + len(video_specs) + audio_index
+    if total_rewriter_media > 12:
+        lines.append(
+            f"注意：当前共有{total_rewriter_media}个媒体参考；Prompt Rewriter Omni最多接收12个，请只连接本次提示词必须理解的素材。"
+        )
+
+    if not video_specs:
+        lines.append("无可提示词寻址的Video参考；固定Guide和自动边界帧不占用Picture/Video编号。")
+    else:
+        lines.append("Video编号严格按时间线从左到右排列，且每个Video只包含与生成区重叠的源区间。")
+        lines.append("固定Guide复用同一重叠区间；自动空隙边界帧不占用Picture/Video编号。")
+    return "\n".join(lines)
+
+
 def _pick_gap_guides(clips: list[dict[str, Any]], selection_start: float, selection_end: float) -> list[tuple[dict[str, Any], float, int, str]]:
     """Choose still guides only when the selection is a true empty gap."""
 
@@ -562,22 +983,24 @@ def _build_references(
             _safe_input_path(str(asset["file"])), target_width, target_height
         )
 
-    def append_video_reference(clip: dict[str, Any], path: Path, timeline_start: float, duration: float) -> None:
-        source_start = _source_time(clip, timeline_start)
-        for piece_start, piece_duration in _windows(source_start, duration):
-            if len(ref_videos) >= MAX_REF_VIDEOS:
-                break
-            reference_frames = _decode_video(
-                path, piece_start, piece_duration, FPS, target_width, target_height
+    # Decode the exact intervals advertised by the planning node.  Keeping this
+    # as one shared plan guarantees Video/Audio ordinals cannot drift between
+    # prompt rewriting and the final H3 encode.
+    for spec in _video_reference_specs(timeline):
+        reference_frames = _decode_video(
+            _safe_input_path(spec["file"]), spec["source_start"], spec["duration"],
+            FPS, target_width, target_height,
+        )
+        if reference_frames is None or reference_frames.shape[0] < 5:
+            continue
+        index = len(ref_videos)
+        ref_videos[f"ref_video_{index}"] = reference_frames
+        if video_audio_enabled and spec["has_audio"]:
+            audio = _decode_audio(
+                _safe_input_path(spec["file"]), spec["source_start"], spec["duration"]
             )
-            if reference_frames is None or reference_frames.shape[0] < 5:
-                continue
-            index = len(ref_videos)
-            ref_videos[f"ref_video_{index}"] = reference_frames
-            if video_audio_enabled and clip.get("hasAudio", True):
-                audio = _decode_audio(path, piece_start, piece_duration)
-                if audio is not None:
-                    ref_video_audios[f"ref_video_audio_{index}"] = audio
+            if audio is not None:
+                ref_video_audios[f"ref_video_audio_{index}"] = audio
 
     # A clip crossing the generated range is split deliberately: the overlap is
     # a hard guide at its target position; only the source context outside the
@@ -593,7 +1016,6 @@ def _build_references(
         mode = _reference_mode(clip)
 
         if mode in {"edit", "boundary"}:
-            append_video_reference(clip, path, overlap_start, overlap_duration)
             if mode == "boundary":
                 first_idx = max(0, round((overlap_start - selection_start) * FPS))
                 last_idx = min(target_length - 1, max(first_idx, round((overlap_end - selection_start) * FPS) - 1))
@@ -660,16 +1082,6 @@ def _build_references(
                 })
             decoded_frames += chunk_frames
             if chunk_frames < requested_frames:
-                break
-
-        outside_intervals: list[tuple[float, float]] = []
-        if clip_start < selection_start:
-            outside_intervals.append((clip_start, min(clip_end, selection_start) - clip_start))
-        if clip_end > selection_end:
-            outside_intervals.append((max(clip_start, selection_end), clip_end - max(clip_start, selection_end)))
-        for timeline_start, outside_duration in outside_intervals:
-            append_video_reference(clip, path, timeline_start, outside_duration)
-            if len(ref_videos) >= MAX_REF_VIDEOS:
                 break
 
     # A true gap has no video reference. Its nearest visual context is anchored
@@ -874,6 +1286,230 @@ async def preview_proxy(request: web.Request) -> web.Response:
         return web.json_response({"error": str(exc)}, status=400)
 
 
+def _encode_timeline_plan(
+    plan: dict[str, Any], clip, vae, audio_vae, prompt: str, ref_image_size: str
+) -> tuple[Any, Any, dict[str, Any], dict[str, Any]]:
+    plan = _require_timeline_plan(plan)
+    timeline = plan["timeline"]
+    target_width, target_height = int(plan["width"]), int(plan["height"])
+    length = int(plan["length"])
+    ref_images, ref_videos, ref_video_audios, ref_audios, guides = _build_references(
+        timeline, target_width, target_height, length
+    )
+    if not (ref_images or ref_videos or ref_audios or guides):
+        raise ValueError(
+            "素材规划没有可用参考：请上传图片/音频，或让生成选择区覆盖视频片段/位于两段视频之间。"
+        )
+    video_audio_output = _timeline_video_audio(timeline)
+    standalone_audio_output = _standalone_audio_track(timeline)
+    log.info(
+        "Encoding planned H3 refs at %dx%d: %d images, %d videos, %d paired audios, %d standalone audios, %d native guides; %d output frames",
+        target_width, target_height, len(ref_images), len(ref_videos),
+        len(ref_video_audios), len(ref_audios), len(guides), length,
+    )
+    conditioning, latent = _execute_h3_independent_first(
+        clip, vae, audio_vae, prompt, target_width, target_height, length,
+        ref_image_size, ref_images, ref_videos, ref_video_audios, ref_audios,
+    )
+    conditioning = _apply_h3_guides(conditioning, latent, vae, audio_vae, guides)
+    return conditioning, latent, video_audio_output, standalone_audio_output
+
+
+class MiniMaxH3TimelinePlanner(io.ComfyNode):
+    """Editable material/guide plan which deliberately performs no H3 encode."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3TimelinePlanner",
+            display_name="MiniMax H3 素材规划台",
+            description=(
+                "编辑时间线并输出轻量素材规划。规划可先连接提示词重写器，重写后的提示词再与同一规划一起进入H3规划编码器，从而避免循环依赖。"
+            ),
+            category="model/conditioning/minimax",
+            inputs=[
+                io.Int.Input("width", default=1344, min=32, max=16384, step=32),
+                io.Int.Input("height", default=768, min=32, max=16384, step=32),
+                io.Float.Input(
+                    "generation_seconds", default=5.0, min=0.21, max=150.0, step=0.1,
+                    tooltip="要生成的时长，与时间线青色生成选区的长度双向同步。",
+                ),
+                io.String.Input("timeline_data", default="", multiline=True),
+            ],
+            outputs=[
+                TimelinePlan.Output(display_name="素材规划"),
+                PromptMediaBundle.Output(display_name="Omni素材包"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, width, height, generation_seconds, timeline_data="") -> io.NodeOutput:
+        plan = _create_timeline_plan(timeline_data, width, height, generation_seconds)
+        return io.NodeOutput(plan, _create_prompt_media_bundle(plan))
+
+
+class MiniMaxH3OmniPromptBridge(io.ComfyNode):
+    """Run Prompt Rewriter Omni directly from the planner's ordered media bundle."""
+
+    @classmethod
+    def define_schema(cls):
+        tasks, models, quantizations = _omni_schema_choices()
+        default_task = "REF2AV" if "REF2AV" in tasks else tasks[0]
+        return io.Schema(
+            node_id="MiniMaxH3OmniPromptBridge",
+            display_name="MiniMax H3 Omni 素材包提示词桥",
+            description=(
+                "读取素材规划台的有序Omni素材包，直接调用MiniMax-H3 Prompt Rewriter Omni后端；"
+                "无需展开或手工连接Picture、Video和Audio端口。"
+            ),
+            category="MiniMax-H3",
+            inputs=[
+                PROMPT_REWRITER_OPTIONS.Input("options", optional=True),
+                PromptMediaBundle.Input("media_bundle"),
+                io.Combo.Input("task", options=tasks, default=default_task),
+                io.String.Input("prompt", multiline=True, default=""),
+                io.Combo.Input("model", options=models, default=models[0]),
+                io.Combo.Input("quantization", options=quantizations, default=quantizations[0]),
+                io.Boolean.Input("greedy", default=True),
+                io.Int.Input("seed", default=42, min=0, max=0xFFFFFFFF, control_after_generate=True),
+                io.Boolean.Input("keep_model_loaded", default=False),
+                io.Int.Input("max_frames", default=8, min=1, max=64, optional=True),
+                io.Boolean.Input("bypass", default=False, optional=True),
+            ],
+            outputs=[io.String.Output(display_name="rewritten_prompt")],
+            hidden=[io.Hidden.unique_id],
+        )
+
+    @classmethod
+    def execute(
+        cls,
+        media_bundle,
+        task,
+        prompt,
+        model,
+        quantization,
+        greedy,
+        seed,
+        keep_model_loaded,
+        options=None,
+        max_frames=8,
+        bypass=False,
+    ) -> io.NodeOutput:
+        bundle = _require_prompt_media_bundle(media_bundle)
+        if bypass:
+            return io.NodeOutput((prompt or "").strip())
+        if model == OMNI_MISSING_MODEL:
+            raise RuntimeError(
+                "请先安装 https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI"
+            )
+
+        module = _load_omni_rewriter()
+        warning = _omni_compatibility_warning()
+        if warning:
+            log.warning(warning)
+            print(f"[MiniMaxH3TimelineDirector] {warning}", flush=True)
+        items = bundle["items"]
+        try:
+            max_references = int(module.MAX_REFERENCES)
+        except (AttributeError, TypeError, ValueError):
+            max_references = 12
+        if len(items) > max_references:
+            raise ValueError(
+                f"Omni素材包包含{len(items)}个媒体参考，但Prompt Rewriter Omni最多支持"
+                f"{max_references}个；请减少本段不必要的参考素材。"
+            )
+        supplied = {f"ref_{index}": item["value"] for index, item in enumerate(items)}
+        reference_layout = json.dumps({"order": list(supplied)}, ensure_ascii=False)
+        try:
+            references, switched_off = module.arrange(supplied, reference_layout)
+        except (AttributeError, TypeError, ValueError, KeyError) as exc:
+            raise _omni_interface_error("arrange", exc) from exc
+        if switched_off:
+            raise RuntimeError("Omni素材包内部出现意外关闭的参考项。")
+
+        try:
+            actual_kinds = [reference.kind for reference in references]
+        except AttributeError as exc:
+            raise _omni_interface_error("reference.kind", exc) from exc
+        expected_kinds = [str(item.get("kind")) for item in items]
+        if actual_kinds != expected_kinds:
+            raise RuntimeError(
+                f"Omni素材类型顺序校验失败：期望{expected_kinds}，实际{actual_kinds}。"
+            )
+        try:
+            settings = dict(module.DEFAULT_OPTIONS)
+        except (AttributeError, TypeError) as exc:
+            raise _omni_interface_error("DEFAULT_OPTIONS", exc) from exc
+        if options:
+            settings.update(options)
+        node_id = getattr(getattr(cls, "hidden", None), "unique_id", None)
+        try:
+            progress = module.NodeProgress(node_id)
+        except (AttributeError, TypeError) as exc:
+            raise _omni_interface_error("NodeProgress", exc) from exc
+        try:
+            rewritten = _call_omni_rewrite(
+                module,
+                model=model,
+                prompt=prompt,
+                task=task,
+                resolution=_closest_omni_resolution(bundle["width"], bundle["height"]),
+                duration=float(bundle["generation_seconds"]),
+                quantization=quantization,
+                greedy=bool(greedy),
+                seed=int(seed),
+                keep_loaded=bool(keep_model_loaded),
+                settings=settings,
+                progress=progress,
+                references=references,
+                max_frames=int(max_frames),
+            )
+        except (AttributeError, TypeError, ValueError, KeyError) as exc:
+            raise _omni_interface_error("rewrite_omni", exc) from exc
+        progress.finish("提示词重写完成")
+        return io.NodeOutput(rewritten)
+
+
+class MiniMaxH3TimelineEncoder(io.ComfyNode):
+    """Encode a planner result only after an external prompt rewrite completes."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3TimelineEncoder",
+            display_name="MiniMax H3 规划编码器",
+            description="接收素材规划和最终H3提示词，编码参考素材、原生Guide、正向条件与音视频Latent。",
+            category="model/conditioning/minimax",
+            inputs=[
+                io.Clip.Input("clip"),
+                io.Vae.Input("vae"),
+                io.Vae.Input("audio_vae"),
+                TimelinePlan.Input("plan"),
+                io.String.Input("prompt", multiline=True, dynamic_prompts=True),
+                io.Combo.Input("ref_image_size", options=["match", "max"], default="match"),
+            ],
+            outputs=[
+                io.Conditioning.Output(display_name="positive"),
+                io.Latent.Output(),
+                io.Audio.Output(
+                    display_name="视频原声合并",
+                    tooltip="按时间轴位置混合所有视频片段的裁剪后原声，空隙保留静音。",
+                ),
+                io.Audio.Output(
+                    display_name="独立音频合并",
+                    tooltip="按素材箱顺序首尾拼接全部独立参考音频。",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, clip, vae, audio_vae, plan, prompt, ref_image_size="match") -> io.NodeOutput:
+        conditioning, latent, video_audio, standalone_audio = _encode_timeline_plan(
+            plan, clip, vae, audio_vae, prompt, ref_image_size
+        )
+        return io.NodeOutput(conditioning, latent, video_audio, standalone_audio)
+
+
 class MiniMaxH3TimelineDirector(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -926,30 +1562,8 @@ class MiniMaxH3TimelineDirector(io.ComfyNode):
         ref_image_size="match",
         timeline_data="",
     ) -> io.NodeOutput:
-        timeline = _parse_timeline(timeline_data)
-        target_width, target_height = int(width), int(height)
-        length = _aligned_h3_length(_float(generation_seconds, 5.0))
-        ref_images, ref_videos, ref_video_audios, ref_audios, guides = _build_references(
-            timeline, target_width, target_height, length
+        plan = _create_timeline_plan(timeline_data, width, height, generation_seconds)
+        conditioning, latent, video_audio, standalone_audio = _encode_timeline_plan(
+            plan, clip, vae, audio_vae, prompt, ref_image_size
         )
-        if not (ref_images or ref_videos or ref_audios or guides):
-            raise ValueError(
-                "导演台没有可用参考：请上传图片/音频，或让生成选择区覆盖视频片段/位于两段视频之间。"
-            )
-        video_audio_output = _timeline_video_audio(timeline)
-        standalone_audio_output = _standalone_audio_track(timeline)
-        log.info(
-            "Building H3 refs at %dx%d: %d images, %d videos, %d paired audios, %d standalone audios, %d native guides; %d output frames",
-            target_width, target_height, len(ref_images), len(ref_videos),
-            len(ref_video_audios), len(ref_audios), len(guides), length,
-        )
-        conditioning, latent = _execute_h3_independent_first(
-            clip, vae, audio_vae, prompt, target_width, target_height, length,
-            ref_image_size, ref_images, ref_videos, ref_video_audios, ref_audios,
-        )
-        conditioning = _apply_h3_guides(
-            conditioning, latent, vae, audio_vae, guides
-        )
-        return io.NodeOutput(
-            conditioning, latent, video_audio_output, standalone_audio_output
-        )
+        return io.NodeOutput(conditioning, latent, video_audio, standalone_audio)

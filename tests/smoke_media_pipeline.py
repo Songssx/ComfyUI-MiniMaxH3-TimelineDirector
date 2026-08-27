@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import tempfile
 import types
 from pathlib import Path
 
@@ -41,6 +42,10 @@ def main() -> None:
         raise SystemExit("usage: smoke_media_pipeline.py VIDEO IMAGE AUDIO")
     plugin_dir = Path(__file__).resolve().parents[1]
     backend = load_plugin(plugin_dir)
+    backend.MiniMaxH3TimelinePlanner.define_schema()
+    backend.MiniMaxH3OmniPromptBridge.define_schema()
+    backend.MiniMaxH3TimelineEncoder.define_schema()
+    backend.MiniMaxH3TimelineDirector.define_schema()
     video, image, audio = sys.argv[1:]
     timeline = {
         "selection": {"start": 2.0, "duration": 5.0},
@@ -66,11 +71,10 @@ def main() -> None:
         backend._safe_input_path(image), target_width, target_height
     )
     assert torch.allclose(images["ref_image_0"], expected_picture_1), "independent image must be Picture 1"
-    assert len(videos) == 2, "the source context before and after the fixed overlap must be Video refs"
-    assert videos["ref_video_0"].shape == (48, target_height, target_width, 3)
-    assert videos["ref_video_1"].shape == (72, target_height, target_width, 3)
+    assert len(videos) == 1, "only the cyan-range intersection may become a Video ref"
+    assert videos["ref_video_0"].shape == (120, target_height, target_width, 3)
     assert all(image.shape == (1, target_height, target_width, 3) for image in images.values())
-    assert len(paired_audio) == 2
+    assert len(paired_audio) == 1
     assert guides[0]["frame_idx"] == 0
     assert sum(g["image"].shape[0] for g in guides) == 120
     assert guides[-1]["frame_idx"] + guides[-1]["image"].shape[0] == 120
@@ -79,6 +83,100 @@ def main() -> None:
     assert standalone_audio["ref_audio_0"]["waveform"].shape[-1] == 3 * 44100
     assert backend._aligned_h3_length(5.0) == 124
     assert backend._aligned_h3_length(10.0) == 243
+
+    # The split planner is the single source of truth for both prompt media and
+    # the later H3 encoder.  Its lazy Video outputs must describe the exact same
+    # source interval as ref_video_0 above.
+    plan = backend._create_timeline_plan(json.dumps(timeline), target_width, target_height, 5.0)
+    assert plan["type"] == "MINIMAX_H3_TIMELINE_PLAN"
+    assert plan["timeline"]["selection"]["duration"] == 5.0
+    planned_specs = backend._video_reference_specs(plan["timeline"])
+    assert [(round(s["source_start"], 3), round(s["duration"], 3)) for s in planned_specs] == [
+        (2.0, 5.0)
+    ]
+    prompt_pictures, prompt_videos, prompt_audios, prompt_video_audios = backend._plan_prompt_media(plan)
+    assert len(prompt_pictures) == 1 and prompt_pictures[0].shape == (1, 192, 320, 3)
+    assert [tuple(round(v, 3) for v in video.get_active_trim_window()) for video in prompt_videos] == [
+        (2.0, 5.0)
+    ]
+    # Prompt Rewriter Omni bypasses trim metadata on a plain VideoFromFile and
+    # samples its raw path. Our wrapper must force its fallback save_to path,
+    # producing a physically trimmed clip with no unselected frames available.
+    with tempfile.TemporaryDirectory(prefix="m3td_prompt_video_") as temporary:
+        exported = Path(temporary) / "video_1.mp4"
+        prompt_videos[0].save_to(str(exported))
+        with backend.av.open(str(exported)) as container:
+            exported_duration = float(container.duration / backend.av.time_base)
+        assert 4.8 <= exported_duration <= 5.2, exported_duration
+    assert len(prompt_audios) == 1 and len(prompt_video_audios) == 1
+    manifest = backend._reference_manifest(plan)
+    assert "<Picture 1>" in manifest and "<Video 1>" in manifest
+    assert "<Audio 1> = 独立音频" in manifest
+    assert "<Audio 2> = <Video 1> 对应原声" in manifest
+    bundle = backend._create_prompt_media_bundle(plan)
+    assert bundle["type"] == "MINIMAX_H3_OMNI_MEDIA_BUNDLE"
+    assert [item["label"] for item in bundle["items"]] == [
+        "<Picture 1>", "<Video 1>", "<Audio 1>", "<Audio 2>",
+    ]
+    bypassed = backend.MiniMaxH3OmniPromptBridge.execute(
+        media_bundle=bundle,
+        task="REF2AV",
+        prompt="short prompt",
+        model=backend.OMNI_MISSING_MODEL,
+        quantization="nf4",
+        greedy=True,
+        seed=42,
+        keep_model_loaded=False,
+        bypass=True,
+    )
+    assert bypassed[0] == "short prompt"
+
+    # Two clips touching the selection are numbered strictly left-to-right, and
+    # only each clip's overlap is exposed (matching the UI cases in the report).
+    two_overlap_timeline = {
+        "selection": {"start": 7.95, "duration": 5.0},
+        "videoClips": [
+            {"file": video, "start": 0.0, "duration": 9.42, "trimStart": 0.0, "hasAudio": True},
+            {"file": video, "start": 11.58, "duration": 10.0, "trimStart": 0.0, "hasAudio": True},
+        ],
+        "images": [], "audios": [],
+    }
+    overlap_specs = backend._video_reference_specs(two_overlap_timeline)
+    assert [(round(s["timeline_start"], 2), round(s["duration"], 2)) for s in overlap_specs] == [
+        (7.95, 1.47), (11.58, 1.37),
+    ]
+
+    # Verify against the actual installed Prompt Rewriter Omni v0.17 API when
+    # it is available: media kind detection, strip order, and per-kind labels.
+    rewriter_root = Path.cwd() / "custom_nodes" / "MiniMax-H3-Prompt-Rewriter-ComfyUI"
+    if rewriter_root.is_dir():
+        sys.path.insert(0, str(rewriter_root))
+        from minimax_h3_rewriter.prompt_template_omni import labels_for
+        from minimax_h3_rewriter.universal import kind_of
+        from minimax_h3_rewriter.writer_omni import arrange
+
+        installed_version = backend._omni_version()
+        assert installed_version, "expected an installed rewriter version"
+        assert tuple(installed_version.split(".")[:2]) == tuple(
+            backend.OMNI_ADAPTED_VERSION.split(".")
+        ), f"rewriter v{installed_version} not the adapted v{backend.OMNI_ADAPTED_VERSION}"
+        assert backend._omni_compatibility_warning() is None
+
+        ordered_media = [
+            *prompt_pictures,
+            *prompt_videos,
+            *prompt_audios,
+            *(audio for audio in prompt_video_audios if audio is not None),
+        ]
+        supplied = {f"ref_{index}": value for index, value in enumerate(ordered_media)}
+        layout = json.dumps({"order": list(supplied)})
+        arranged, switched_off = arrange(supplied, layout)
+        kinds = [kind_of(value) for value in ordered_media]
+        assert switched_off == 0
+        assert [reference.kind for reference in arranged] == kinds
+        assert labels_for(kinds) == [
+            "<Picture 1>", "<Video 1>", "<Audio 1>", "<Audio 2>",
+        ]
     video_track = backend._timeline_video_audio(timeline)
     independent_track = backend._standalone_audio_track(timeline)
     assert video_track["waveform"].shape[-1] == 10 * 44100

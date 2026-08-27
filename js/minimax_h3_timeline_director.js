@@ -1,7 +1,7 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
-const NODE_NAME = "MiniMaxH3TimelineDirector";
+const TIMELINE_NODE_NAMES = new Set(["MiniMaxH3TimelinePlanner", "MiniMaxH3TimelineDirector"]);
 const STYLE_ID = "m3td-style";
 const CHUNK_SIZE = 4 * 1024 * 1024;
 const DIRECTOR_HEIGHT = 674;
@@ -203,10 +203,11 @@ function viewURL(relative) {
 }
 
 class TimelineDirectorUI {
-  constructor(node, root, widget) {
+  constructor(node, root, widget, brand = "MiniMax H3 素材规划台") {
     this.node = node;
     this.root = root;
     this.widget = widget;
+    this.brand = brand;
     this.state = normalizeState(this.readWidget());
     this.zoom = 64;
     this.selectedId = null;
@@ -298,12 +299,9 @@ class TimelineDirectorUI {
       const mode = clip.referenceMode || "guide";
       if (mode === "guide") guidePieces.push({clipId:clip.id, frames:guideFrames, mode, hasAudio:this.state.videoAudioEnabled && !!clip.hasAudio});
       else if (mode === "boundary") guidePieces.push({clipId:clip.id, frames:Math.min(2,guideFrames), mode, hasAudio:false});
-      const intervals = [];
-      if (mode === "guide") {
-        if (clip.start < start) intervals.push(Math.min(clipEnd(clip), start) - clip.start);
-        if (clipEnd(clip) > end) intervals.push(clipEnd(clip) - Math.max(clip.start, end));
-      } else intervals.push(overlap);
-      for (let remaining of intervals) while (remaining >= 5/24 && videoPieces.length < 3) {
+      // Only the intersection with the cyan generation range is prompt- and
+      // H3-addressable.  Unselected source frames never become Video N.
+      for (let remaining of [overlap]) while (remaining >= 5/24 && videoPieces.length < 3) {
         const seconds = Math.min(15, remaining);
         const hasAudio = this.state.videoAudioEnabled && !!clip.hasAudio;
         videoPieces.push({clipId: clip.id, seconds, hasAudio, mode});
@@ -371,7 +369,7 @@ class TimelineDirectorUI {
     this.root.className = "m3td";
     this.root.innerHTML = `
       <div class="m3td-head">
-        <span class="m3td-brand">MiniMax H3 时间线导演台</span>
+        <span class="m3td-brand">${esc(this.brand)}</span>
         <button class="m3td-btn" data-action="video">＋ 视频</button>
         <button class="m3td-btn" data-action="image">＋ 图片</button>
         <button class="m3td-btn" data-action="audio">＋ 音频</button>
@@ -960,7 +958,7 @@ class TimelineDirectorUI {
 app.registerExtension({
   name: "MiniMaxH3.TimelineDirector",
   async beforeRegisterNodeDef(nodeType,nodeData) {
-    if(nodeData.name!==NODE_NAME)return;
+    if(!TIMELINE_NODE_NAMES.has(nodeData.name))return;
     installStyles();
     const originalCreated=nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated=function(){
@@ -975,7 +973,8 @@ app.registerExtension({
       const root=document.createElement("div");
       const directorWidget=this.addDOMWidget("minimax_h3_timeline","div",root,{serialize:false,hideOnZoom:false});
       directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),DIRECTOR_HEIGHT];
-      this.__m3td=new TimelineDirectorUI(this,root,timelineWidget);
+      const brand=nodeData.name==="MiniMaxH3TimelinePlanner"?"MiniMax H3 素材规划台":"MiniMax H3 时间线导演台（兼容）";
+      this.__m3td=new TimelineDirectorUI(this,root,timelineWidget,brand);
       requestAnimationFrame(()=>{
         const computed=this.computeSize?.()||[860,820];
         this.setSize?.([Math.max(860,this.size?.[0]||0,computed[0]||0),computed[1]||820]);

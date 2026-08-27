@@ -6,9 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-27
+
+### Added
+
+- Split workflow architecture with `MiniMax H3 Material Planner` and `MiniMax H3 Plan Encoder`, removing the dependency cycle when timeline media is inspected by `MiniMax-H3 Prompt Rewriter Omni`.
+- Compact `MINIMAX_H3_OMNI_MEDIA_BUNDLE` connection that carries exact Picture, Video, standalone Audio, and paired video-soundtrack order through one socket.
+- `MiniMax H3 Omni Media-Bundle Prompt Bridge`, which calls the installed Prompt Rewriter Omni backend and returns only `rewritten_prompt`.
+
+### Changed
+
+- Material Planner outputs were reduced from 23 sockets to two: the H3 plan and the ordered Omni media bundle.
+- Every reference video is now strictly cropped to its intersection with the cyan generation range. Outside source frames no longer enter prompt rewriting, H3 video-reference encoding, or per-clip Guides.
+- Intersecting videos are numbered left-to-right on the timeline, and the same interval plan is shared by the Omni bridge and final H3 encoder.
+- The original monolithic Timeline Director remains available as a backward-compatible node.
+
 ### Documentation
 
 - Added a Chinese operational guide for video-generation agents covering long-video segmentation, fixed-Guide overlap, H3 prompt alignment, audio continuity, reference ordering, and deduplicated assembly.
+- Added three lightweight example workflows for the compatibility timeline, split planner/encoder, and Prompt Rewriter Omni pipeline.
+- Reworked the Chinese and English READMEs into a shorter quick-start guide with compressed workflow screenshots, explicit Prompt Rewriter dependency information, and project credits.
 
 ## [0.3.2] - 2026-08-27
 
