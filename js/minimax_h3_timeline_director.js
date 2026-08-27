@@ -27,12 +27,12 @@ function installStyles() {
     .m3td-btn:disabled { opacity:.42; cursor:default; }
     .m3td-spacer { flex:1; }
     .m3td-status { color:var(--muted); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .m3td-settings { display:flex; align-items:center; gap:12px; padding:7px 10px; border-bottom:1px solid var(--line); background:#151a22; }
-    .m3td-field { display:flex; align-items:center; gap:5px; color:var(--muted); }
+    .m3td-settings { display:flex; align-items:center; gap:8px 12px; padding:7px 10px; border-bottom:1px solid var(--line); background:#151a22; flex-wrap:wrap; }
+    .m3td-field { display:flex; flex:0 0 auto; align-items:center; gap:5px; color:var(--muted); white-space:nowrap; }
     .m3td-field input,.m3td-field select { width:72px; height:25px; padding:2px 5px; color:var(--text); background:#0d1118;
       border:1px solid #333d50; border-radius:4px; outline:none; user-select:text; }
     .m3td-field input:focus,.m3td-field select:focus { border-color:var(--cyan); }
-    .m3td-help { margin-left:auto; color:#9da9bc; }
+    .m3td-help { flex:1 1 220px; margin-left:auto; color:#9da9bc; text-align:right; }
     .m3td-timeline-shell { display:grid; grid-template-columns:108px minmax(0,1fr); border-bottom:1px solid var(--line); }
     .m3td-labels { background:#151a22; border-right:1px solid var(--line); padding-top:26px; }
     .m3td-track-label { display:flex; height:94px; align-items:center; padding:0 10px; border-top:1px solid #272e3b; color:#aab5c7; }
@@ -79,7 +79,7 @@ function installStyles() {
     .m3td-playhead::after { content:""; position:absolute; left:4px; top:0; bottom:0; width:1px; background:#ff737d; }
     .m3td-snap-guide { position:absolute; top:0; bottom:0; width:1px; z-index:12; pointer-events:none;
       background:#ffe178; box-shadow:0 0 5px #ffe178; }
-    .m3td-inspector { display:flex; gap:10px; align-items:center; min-height:38px; padding:6px 10px; background:#171c25;
+    .m3td-inspector { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; min-height:38px; padding:6px 10px; background:#171c25;
       border-bottom:1px solid var(--line); color:var(--muted); }
     .m3td-inspector strong { color:#dfe8f7; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .m3td-inspector .m3td-field input { width:66px; }
@@ -219,6 +219,7 @@ class TimelineDirectorUI {
     this.uploading = false;
     this.proxyRequests = new Map();
     this.previewRAF = 0;
+    this.layoutRAF = 0;
     this.previewClipId = null;
     this.build();
     this.bindGenerationWidget();
@@ -532,6 +533,30 @@ class TimelineDirectorUI {
     this.renderInspector();
     this.renderAssets();
     this.renderTags();
+    this.scheduleNodeHeightSync();
+  }
+
+  requiredDirectorHeight() {
+    const foot = this.root.querySelector(".m3td-foot");
+    if (!foot) return DIRECTOR_HEIGHT;
+    const currentWidgetHeight = this.directorWidget?.__m3tdHeight || DIRECTOR_HEIGHT;
+    const widgetChrome = Math.max(0, currentWidgetHeight - this.root.clientHeight);
+    const contentHeight = Math.ceil(foot.offsetTop + foot.offsetHeight + 2);
+    return Math.max(DIRECTOR_HEIGHT, contentHeight + widgetChrome);
+  }
+
+  scheduleNodeHeightSync() {
+    cancelAnimationFrame(this.layoutRAF);
+    this.layoutRAF = requestAnimationFrame(() => {
+      const desiredHeight = this.requiredDirectorHeight();
+      if (this.directorWidget) this.directorWidget.__m3tdHeight = desiredHeight;
+      const computed = this.node.computeSize?.();
+      const currentWidth = this.node.size?.[0] || computed?.[0] || 860;
+      const currentHeight = this.node.size?.[1] || 0;
+      const minimumHeight = Math.ceil(computed?.[1] || desiredHeight);
+      if (currentHeight + 1 < minimumHeight) this.node.setSize?.([currentWidth, minimumHeight]);
+      this.node.setDirtyCanvas?.(true, true);
+    });
   }
 
   renderTimeline() {
@@ -944,7 +969,7 @@ class TimelineDirectorUI {
 
   reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
   destroy() {
-    cancelAnimationFrame(this.previewRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
+    cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.layoutRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
     this.root.removeEventListener("wheel",this.forwardWheel);
     if(this.externalDropHandlers){
       this.root.removeEventListener("dragenter",this.externalDropHandlers.showDropTarget,true);
@@ -972,18 +997,22 @@ app.registerExtension({
       this.size=[Math.max(this.size?.[0]||0,860),this.size?.[1]||0];
       const root=document.createElement("div");
       const directorWidget=this.addDOMWidget("minimax_h3_timeline","div",root,{serialize:false,hideOnZoom:false});
-      directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),DIRECTOR_HEIGHT];
+      directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),directorWidget.__m3tdHeight||DIRECTOR_HEIGHT];
       const brand=nodeData.name==="MiniMaxH3TimelinePlanner"?"MiniMax H3 素材规划台":"MiniMax H3 时间线导演台（兼容）";
       this.__m3td=new TimelineDirectorUI(this,root,timelineWidget,brand);
+      this.__m3td.directorWidget=directorWidget;
       requestAnimationFrame(()=>{
+        this.__m3td?.scheduleNodeHeightSync();
         const computed=this.computeSize?.()||[860,820];
         this.setSize?.([Math.max(860,this.size?.[0]||0,computed[0]||0),computed[1]||820]);
         this.setDirtyCanvas?.(true,true);
       });
       return result;
     };
+    const originalResize=nodeType.prototype.onResize;
+    nodeType.prototype.onResize=function(){const result=originalResize?.apply(this,arguments);this.__m3td?.scheduleNodeHeightSync();return result;};
     const originalConfigure=nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure=function(){const result=originalConfigure?.apply(this,arguments);setTimeout(()=>this.__m3td?.reload(),0);return result;};
+    nodeType.prototype.onConfigure=function(){const result=originalConfigure?.apply(this,arguments);setTimeout(()=>{this.__m3td?.reload();this.__m3td?.scheduleNodeHeightSync();},0);return result;};
     const originalRemoved=nodeType.prototype.onRemoved;
     nodeType.prototype.onRemoved=function(){this.__m3td?.destroy();return originalRemoved?.apply(this,arguments);};
   }

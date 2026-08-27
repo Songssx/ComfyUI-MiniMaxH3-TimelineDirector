@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-27
+
+### Fixed
+
+- Keep the director DOM fully inside the node after manual width/height resizing by measuring wrapped content, accounting for ComfyUI DOM-widget chrome, and automatically enforcing the resulting minimum node height.
+- Allow narrow layouts to wrap settings and inspector controls as complete fields instead of squeezing Chinese labels into vertical characters.
+
 ## [0.4.0] - 2026-08-27
 
 ### Added
