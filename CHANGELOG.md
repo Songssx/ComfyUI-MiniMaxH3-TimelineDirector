@@ -10,6 +10,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 - Added a Chinese operational guide for video-generation agents covering long-video segmentation, fixed-Guide overlap, H3 prompt alignment, audio continuity, reference ordering, and deduplicated assembly.
 
+## [0.3.2] - 2026-08-27
+
+### Added
+
+- Video, image, and audio picker buttons now support selecting and importing multiple files in one operation.
+
+### Fixed
+
+- Mouse-wheel events over the director DOM are forwarded to the ComfyUI canvas so canvas zoom continues to work under the cursor.
+- Reduced the director DOM widget height from 750 to its 674-pixel content height and removed the forced oversized node height.
+
 ## [0.3.1] - 2026-08-26
 
 ### Added

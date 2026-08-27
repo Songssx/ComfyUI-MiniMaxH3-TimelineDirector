@@ -4,6 +4,7 @@ import { api } from "/scripts/api.js";
 const NODE_NAME = "MiniMaxH3TimelineDirector";
 const STYLE_ID = "m3td-style";
 const CHUNK_SIZE = 4 * 1024 * 1024;
+const DIRECTOR_HEIGHT = 674;
 
 function installStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -156,6 +157,18 @@ function uploadKindForFile(file) {
   if (["mp3","wav","flac","m4a","aac","ogg","opus","wma"].includes(extension)) return "audio";
   if (["mp4","mov","mkv","webm","avi","m4v","mpeg","mpg"].includes(extension)) return "video";
   return null;
+}
+
+function forwardWheelEvent(event, canvas) {
+  if (!canvas) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  return canvas.dispatchEvent(new WheelEvent("wheel", {
+    bubbles:true, cancelable:true, composed:true,
+    deltaX:event.deltaX, deltaY:event.deltaY, deltaZ:event.deltaZ, deltaMode:event.deltaMode,
+    clientX:event.clientX, clientY:event.clientY, screenX:event.screenX, screenY:event.screenY,
+    ctrlKey:event.ctrlKey, shiftKey:event.shiftKey, altKey:event.altKey, metaKey:event.metaKey
+  }));
 }
 
 function emptyState() {
@@ -395,9 +408,9 @@ class TimelineDirectorUI {
         <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考音频（0/3）</span><span>拖拽排序 · &lt;Audio j&gt;</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
       </div>
       <div class="m3td-foot"><strong>提示词编号：</strong><span class="m3td-tags"></span></div>
-      <input hidden data-upload="video" type="file" accept="video/*">
-      <input hidden data-upload="image" type="file" accept="image/*">
-      <input hidden data-upload="audio" type="file" accept="audio/*">
+      <input hidden data-upload="video" type="file" accept="video/*" multiple>
+      <input hidden data-upload="image" type="file" accept="image/*" multiple>
+      <input hidden data-upload="audio" type="file" accept="audio/*" multiple>
     `;
     this.stage = this.root.querySelector(".m3td-stage");
     this.viewport = this.root.querySelector(".m3td-viewport");
@@ -429,7 +442,11 @@ class TimelineDirectorUI {
     this.previewVideo.ontimeupdate = () => this.followPreviewPlayback();
     this.previewVideo.onended = () => { this.previewPlay.textContent = "▶ 播放预览"; };
     for (const input of this.root.querySelectorAll("[data-upload]")) {
-      input.onchange = async () => { if (input.files?.[0]) await this.addFile(input.dataset.upload, input.files[0]); input.value = ""; };
+      input.onchange = async () => {
+        const files = Array.from(input.files || []);
+        input.value = "";
+        for (const file of files) await this.addFile(input.dataset.upload, file);
+      };
     }
     const startInput = this.root.querySelector('[data-field="selectionStart"]');
     const durInput = this.root.querySelector('[data-field="selectionDuration"]');
@@ -454,6 +471,8 @@ class TimelineDirectorUI {
       if (e.target.closest(".m3td-clip")) return;
       this.fitSelectionToGapAt(this.timeFromClientX(e.clientX));
     });
+    this.forwardWheel = event => forwardWheelEvent(event, app.canvas?.canvas);
+    this.root.addEventListener("wheel", this.forwardWheel, {passive:false});
   }
 
   bindExternalFileDrop() {
@@ -928,6 +947,7 @@ class TimelineDirectorUI {
   reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
   destroy() {
     cancelAnimationFrame(this.previewRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
+    this.root.removeEventListener("wheel",this.forwardWheel);
     if(this.externalDropHandlers){
       this.root.removeEventListener("dragenter",this.externalDropHandlers.showDropTarget,true);
       this.root.removeEventListener("dragover",this.externalDropHandlers.showDropTarget,true);
@@ -951,14 +971,14 @@ app.registerExtension({
         const timelineElement=timelineWidget.element || timelineWidget.inputEl;
         if(timelineElement){timelineElement.style.display="none";timelineElement.parentElement && (timelineElement.parentElement.style.display="none");}
       }
-      this.size=[Math.max(this.size?.[0]||0,860),Math.max(this.size?.[1]||0,1040)];
+      this.size=[Math.max(this.size?.[0]||0,860),this.size?.[1]||0];
       const root=document.createElement("div");
       const directorWidget=this.addDOMWidget("minimax_h3_timeline","div",root,{serialize:false,hideOnZoom:false});
-      directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),750];
+      directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),DIRECTOR_HEIGHT];
       this.__m3td=new TimelineDirectorUI(this,root,timelineWidget);
       requestAnimationFrame(()=>{
         const computed=this.computeSize?.()||[860,820];
-        this.setSize?.([Math.max(860,this.size?.[0]||0,computed[0]||0),Math.max(1040,this.size?.[1]||0,computed[1]||0)]);
+        this.setSize?.([Math.max(860,this.size?.[0]||0,computed[0]||0),computed[1]||820]);
         this.setDirtyCanvas?.(true,true);
       });
       return result;

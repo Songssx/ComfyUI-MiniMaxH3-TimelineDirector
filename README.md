@@ -102,9 +102,9 @@ example_workflows/minimax_h3_r2v_时间线导演台.json
 
 | Control | Function |
 | --- | --- |
-| `+ Video` | Upload a video and add it to the timeline. Embedded audio is detected automatically. |
-| `+ Image` | Add a standalone reference image. |
-| `+ Audio` | Add a standalone reference audio file. |
+| `+ Video` | Select one or more videos and append them to the timeline. Embedded audio is detected automatically. |
+| `+ Image` | Select and add one or more standalone reference images. |
+| `+ Audio` | Select and add one or more standalone reference audio files. |
 | `Split at Playhead` | Split the selected video clip at the red playhead. |
 | `Delete Clip` | Remove the selected timeline clip. |
 | `Fit All` | Adjust timeline zoom so all clips and the generation range are visible. |
