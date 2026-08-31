@@ -131,6 +131,61 @@ def main() -> None:
     )
     assert bypassed[0] == "short prompt"
 
+    # Optional prompt_index selects one material segment.  Each selected list
+    # is reordered exactly as configured and its Picture/Audio labels restart
+    # from 1.  Without prompt_index the planner remains backward-compatible and
+    # exposes the complete master library.
+    segmented_timeline = {
+        "selection": {"start": 0.0, "duration": 5.0},
+        "videoClips": [],
+        "images": [
+            {"id": "image-a", "file": image, "name": "A.png"},
+            {"id": "image-b", "file": image, "name": "B.png"},
+            {"id": "image-c", "file": image, "name": "C.png"},
+        ],
+        "audios": [
+            {"id": "audio-a", "file": audio, "name": "A.wav"},
+            {"id": "audio-b", "file": audio, "name": "B.wav"},
+            {"id": "audio-c", "file": audio, "name": "C.wav"},
+        ],
+        "segmentConfig": {
+            "count": 3,
+            "segments": [
+                {"images": ["image-b", "image-a"], "audios": ["audio-b", "audio-a"]},
+                {"images": ["image-a"], "audios": ["audio-a"]},
+                {"images": ["image-c"], "audios": ["audio-c"]},
+            ],
+        },
+    }
+    segment_one = backend._create_timeline_plan(
+        json.dumps(segmented_timeline), target_width, target_height, 5.0, prompt_index=1
+    )
+    assert [item["id"] for item in segment_one["timeline"]["images"]] == ["image-b", "image-a"]
+    assert [item["id"] for item in segment_one["timeline"]["audios"]] == ["audio-b", "audio-a"]
+    assert segment_one["prompt_index"] == 1 and segment_one["segment_count"] == 3
+    segment_one_bundle = backend._create_prompt_media_bundle(segment_one)
+    assert [item["label"] for item in segment_one_bundle["items"]] == [
+        "<Picture 1>", "<Picture 2>", "<Audio 1>", "<Audio 2>",
+    ]
+    segment_two = backend._create_timeline_plan(
+        json.dumps(segmented_timeline), target_width, target_height, 5.0, prompt_index=2
+    )
+    assert [item["id"] for item in segment_two["timeline"]["images"]] == ["image-a"]
+    assert [item["id"] for item in segment_two["timeline"]["audios"]] == ["audio-a"]
+    unfiltered = backend._create_timeline_plan(
+        json.dumps(segmented_timeline), target_width, target_height, 5.0
+    )
+    assert len(unfiltered["timeline"]["images"]) == 3
+    assert len(unfiltered["timeline"]["audios"]) == 3
+    try:
+        backend._create_timeline_plan(
+            json.dumps(segmented_timeline), target_width, target_height, 5.0, prompt_index=4
+        )
+    except ValueError as error:
+        assert "超出素材规划台" in str(error)
+    else:
+        raise AssertionError("out-of-range prompt index must fail clearly")
+
     # Two clips touching the selection are numbered strictly left-to-right, and
     # only each clip's overlap is exposed (matching the UI cases in the report).
     two_overlap_timeline = {

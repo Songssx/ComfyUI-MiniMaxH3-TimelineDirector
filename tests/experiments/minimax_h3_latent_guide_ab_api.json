@@ -1,0 +1,712 @@
+{
+  "prompt": {
+    "1": {
+      "inputs": {
+        "weight_dtype": "default",
+        "unet_name": "minimax_h3_ref2va_int8_convrot.safetensors"
+      },
+      "class_type": "UNETLoader",
+      "_meta": {
+        "title": "H3 UNet"
+      }
+    },
+    "2": {
+      "inputs": {
+        "device": "default",
+        "type": "minimax",
+        "clip_name": "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+      },
+      "class_type": "CLIPLoader",
+      "_meta": {
+        "title": "H3 CLIP"
+      }
+    },
+    "3": {
+      "inputs": {
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      },
+      "class_type": "VAELoader",
+      "_meta": {
+        "title": "H3 Video VAE"
+      }
+    },
+    "4": {
+      "inputs": {
+        "strength_model": 1.0,
+        "lora_name": "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors",
+        "model": [
+          "1",
+          0
+        ]
+      },
+      "class_type": "LoraLoaderModelOnly",
+      "_meta": {
+        "title": "H3 Turbo LoRA"
+      }
+    },
+    "5": {
+      "inputs": {
+        "sampler_name": "euler"
+      },
+      "class_type": "KSamplerSelect",
+      "_meta": {
+        "title": "��ͬ������"
+      }
+    },
+    "6": {
+      "inputs": {
+        "model": [
+          "4",
+          0
+        ],
+        "steps": 8,
+        "denoise": 1.0,
+        "scheduler": "simple"
+      },
+      "class_type": "BasicScheduler",
+      "_meta": {
+        "title": "��ͬ������"
+      }
+    },
+    "10": {
+      "inputs": {
+        "width": 640,
+        "height": 352,
+        "length": 124,
+        "prompt": "subject_definitions:\n<Subject 1> is a young woman with short black hair, wearing a matte teal jacket over a cream shirt.\n\ndetailed_description:\n[Shot 1] A single continuous medium shot inside a softly lit modern studio. <Subject 1> stands beside a wooden desk, slowly turns toward the camera, lifts a small blue glass sphere with both hands, and smiles subtly. The camera performs a very slow forward dolly. Soft daylight enters from frame left; neutral white balance, natural skin tones, restrained teal and warm wood colors, moderate contrast, and realistic texture. No cut, no transition, no sudden lighting change.\n\noverall_soundscape:\nQuiet indoor room tone with subtle cloth movement.\n\nnon_diegetic_music:\nN/A",
+        "vae": [
+          "3",
+          0
+        ],
+        "clip": [
+          "2",
+          0
+        ]
+      },
+      "class_type": "MiniMaxH3ImageToVideo",
+      "_meta": {
+        "title": "�׶λ�������"
+      }
+    },
+    "11": {
+      "inputs": {
+        "noise_seed": 424242
+      },
+      "class_type": "RandomNoise",
+      "_meta": {
+        "title": "�׶�����"
+      }
+    },
+    "12": {
+      "inputs": {
+        "model": [
+          "4",
+          0
+        ],
+        "conditioning": [
+          "10",
+          0
+        ]
+      },
+      "class_type": "BasicGuider",
+      "_meta": {
+        "title": "�׶�������"
+      }
+    },
+    "13": {
+      "inputs": {
+        "guider": [
+          "12",
+          0
+        ],
+        "noise": [
+          "11",
+          0
+        ],
+        "latent_image": [
+          "10",
+          1
+        ],
+        "sigmas": [
+          "6",
+          0
+        ],
+        "sampler": [
+          "5",
+          0
+        ]
+      },
+      "class_type": "SamplerCustomAdvanced",
+      "_meta": {
+        "title": "�׶β���������latent"
+      }
+    },
+    "14": {
+      "inputs": {
+        "samples": [
+          "13",
+          0
+        ],
+        "vae": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "VAEDecode",
+      "_meta": {
+        "title": "�׶ν���"
+      }
+    },
+    "15": {
+      "inputs": {
+        "image": [
+          "14",
+          0
+        ],
+        "length": 22,
+        "batch_index": 102
+      },
+      "class_type": "ImageFromBatch",
+      "_meta": {
+        "title": "�׶����22֡RGB"
+      }
+    },
+    "16": {
+      "inputs": {
+        "fps": 24.0,
+        "images": [
+          "14",
+          0
+        ],
+        "color_space": "sRGB",
+        "bit_depth": 8
+      },
+      "class_type": "CreateVideo",
+      "_meta": {
+        "title": "�׶���Ƶ"
+      }
+    },
+    "17": {
+      "inputs": {
+        "format": "auto",
+        "codec": "auto",
+        "format.codec": "auto",
+        "video-preview": "",
+        "video": [
+          "16",
+          0
+        ],
+        "filename_prefix": "video/H3_latent_ab/00_source_segment"
+      },
+      "class_type": "SaveVideo",
+      "_meta": {
+        "title": "�����׶�"
+      }
+    },
+    "20": {
+      "inputs": {
+        "width": 640,
+        "height": 352,
+        "length": 124,
+        "prompt": "subject_definitions:\n<Subject 1> is the same young woman and appearance established by the fixed opening clip.\n\ndetailed_description:\n[Shot 1] The first 00:00.000-00:00.917 is the exact fixed continuation anchor from the preceding video. Preserve its composition, motion, lighting, character identity, and color. After 00:00.917 the same uninterrupted shot continues naturally: <Subject 1> gently rotates the blue glass sphere, looks down at its reflection, then looks back toward the camera. Maintain the same slow forward dolly, studio layout, exposure, neutral white balance, natural skin tones, restrained teal and warm wood colors, saturation, and contrast. No cut or transition.\n\noverall_soundscape:\nQuiet indoor room tone with subtle cloth movement.\n\nnon_diegetic_music:\nN/A",
+        "vae": [
+          "3",
+          0
+        ],
+        "clip": [
+          "2",
+          0
+        ]
+      },
+      "class_type": "MiniMaxH3ImageToVideo",
+      "_meta": {
+        "title": "�ڶ��ι�ͬ��������"
+      }
+    },
+    "21": {
+      "inputs": {
+        "latent": [
+          "20",
+          1
+        ],
+        "positive": [
+          "20",
+          0
+        ],
+        "frame_idx": 0,
+        "vae": [
+          "3",
+          0
+        ],
+        "image": [
+          "15",
+          0
+        ]
+      },
+      "class_type": "MiniMaxH3AddGuide",
+      "_meta": {
+        "title": "A��RGB��������±���Guide"
+      }
+    },
+    "22": {
+      "inputs": {
+        "frame_idx": 0,
+        "positive": [
+          "20",
+          0
+        ],
+        "guide_frames": 22,
+        "target_latent": [
+          "20",
+          1
+        ],
+        "source_latent": [
+          "13",
+          0
+        ]
+      },
+      "class_type": "MiniMaxH3AddLatentGuide",
+      "_meta": {
+        "title": "B��ֱ�Ӹ���β��latent Guide"
+      }
+    },
+    "30": {
+      "inputs": {
+        "noise_seed": 8675309
+      },
+      "class_type": "RandomNoise",
+      "_meta": {
+        "title": "����֧��ͬ����"
+      }
+    },
+    "31": {
+      "inputs": {
+        "model": [
+          "4",
+          0
+        ],
+        "conditioning": [
+          "21",
+          0
+        ]
+      },
+      "class_type": "BasicGuider",
+      "_meta": {
+        "title": "A������"
+      }
+    },
+    "32": {
+      "inputs": {
+        "model": [
+          "4",
+          0
+        ],
+        "conditioning": [
+          "22",
+          0
+        ]
+      },
+      "class_type": "BasicGuider",
+      "_meta": {
+        "title": "B������"
+      }
+    },
+    "33": {
+      "inputs": {
+        "guider": [
+          "31",
+          0
+        ],
+        "noise": [
+          "30",
+          0
+        ],
+        "latent_image": [
+          "20",
+          1
+        ],
+        "sigmas": [
+          "6",
+          0
+        ],
+        "sampler": [
+          "5",
+          0
+        ]
+      },
+      "class_type": "SamplerCustomAdvanced",
+      "_meta": {
+        "title": "A����"
+      }
+    },
+    "34": {
+      "inputs": {
+        "guider": [
+          "32",
+          0
+        ],
+        "noise": [
+          "30",
+          0
+        ],
+        "latent_image": [
+          "20",
+          1
+        ],
+        "sigmas": [
+          "6",
+          0
+        ],
+        "sampler": [
+          "5",
+          0
+        ]
+      },
+      "class_type": "SamplerCustomAdvanced",
+      "_meta": {
+        "title": "B����"
+      }
+    },
+    "35": {
+      "inputs": {
+        "samples": [
+          "33",
+          0
+        ],
+        "vae": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "VAEDecode",
+      "_meta": {
+        "title": "A����"
+      }
+    },
+    "36": {
+      "inputs": {
+        "samples": [
+          "34",
+          0
+        ],
+        "vae": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "VAEDecode",
+      "_meta": {
+        "title": "B����"
+      }
+    },
+    "37": {
+      "inputs": {
+        "image": [
+          "35",
+          0
+        ],
+        "length": 22,
+        "batch_index": 0
+      },
+      "class_type": "ImageFromBatch",
+      "_meta": {
+        "title": "A�̶���22֡"
+      }
+    },
+    "38": {
+      "inputs": {
+        "image": [
+          "36",
+          0
+        ],
+        "length": 22,
+        "batch_index": 0
+      },
+      "class_type": "ImageFromBatch",
+      "_meta": {
+        "title": "B�̶���22֡"
+      }
+    },
+    "40": {
+      "inputs": {
+        "fps": 24.0,
+        "images": [
+          "35",
+          0
+        ],
+        "color_space": "sRGB",
+        "bit_depth": 8
+      },
+      "class_type": "CreateVideo",
+      "_meta": {
+        "title": "A��Ƶ"
+      }
+    },
+    "41": {
+      "inputs": {
+        "fps": 24.0,
+        "images": [
+          "36",
+          0
+        ],
+        "color_space": "sRGB",
+        "bit_depth": 8
+      },
+      "class_type": "CreateVideo",
+      "_meta": {
+        "title": "B��Ƶ"
+      }
+    },
+    "42": {
+      "inputs": {
+        "format": "auto",
+        "codec": "auto",
+        "format.codec": "auto",
+        "video-preview": "",
+        "video": [
+          "40",
+          0
+        ],
+        "filename_prefix": "video/H3_latent_ab/01_RGB_decode_reencode"
+      },
+      "class_type": "SaveVideo",
+      "_meta": {
+        "title": "����A��Ƶ"
+      }
+    },
+    "43": {
+      "inputs": {
+        "format": "auto",
+        "codec": "auto",
+        "format.codec": "auto",
+        "video-preview": "",
+        "video": [
+          "41",
+          0
+        ],
+        "filename_prefix": "video/H3_latent_ab/02_direct_latent"
+      },
+      "class_type": "SaveVideo",
+      "_meta": {
+        "title": "����B��Ƶ"
+      }
+    },
+    "50": {
+      "inputs": {
+        "reference": [
+          "35",
+          0
+        ],
+        "comparison": [
+          "36",
+          0
+        ],
+        "difference_gain": 8.0
+      },
+      "class_type": "MiniMaxH3VisualDifferenceMetrics",
+      "_meta": {
+        "title": "A/B���β���"
+      }
+    },
+    "51": {
+      "inputs": {
+        "text": "",
+        "anything": [
+          "50",
+          0
+        ]
+      },
+      "class_type": "easy showAnything",
+      "_meta": {
+        "title": "��ʾA/Bָ��"
+      }
+    },
+    "52": {
+      "inputs": {
+        "reference": [
+          "15",
+          0
+        ],
+        "comparison": [
+          "37",
+          0
+        ],
+        "difference_gain": 8.0
+      },
+      "class_type": "MiniMaxH3VisualDifferenceMetrics",
+      "_meta": {
+        "title": "A�̶������Դβ��"
+      }
+    },
+    "53": {
+      "inputs": {
+        "text": "",
+        "anything": [
+          "52",
+          0
+        ]
+      },
+      "class_type": "easy showAnything",
+      "_meta": {
+        "title": "��ʾA�̶���ָ��"
+      }
+    },
+    "54": {
+      "inputs": {
+        "reference": [
+          "15",
+          0
+        ],
+        "comparison": [
+          "38",
+          0
+        ],
+        "difference_gain": 8.0
+      },
+      "class_type": "MiniMaxH3VisualDifferenceMetrics",
+      "_meta": {
+        "title": "B�̶������Դβ��"
+      }
+    },
+    "55": {
+      "inputs": {
+        "text": "",
+        "anything": [
+          "54",
+          0
+        ]
+      },
+      "class_type": "easy showAnything",
+      "_meta": {
+        "title": "��ʾB�̶���ָ��"
+      }
+    },
+    "56": {
+      "inputs": {
+        "fps": 24.0,
+        "images": [
+          "50",
+          1
+        ],
+        "color_space": "sRGB",
+        "bit_depth": 8
+      },
+      "class_type": "CreateVideo",
+      "_meta": {
+        "title": "A/B������Ƶ"
+      }
+    },
+    "57": {
+      "inputs": {
+        "format": "auto",
+        "codec": "auto",
+        "format.codec": "auto",
+        "video-preview": "",
+        "video": [
+          "56",
+          0
+        ],
+        "filename_prefix": "video/H3_latent_ab/03_difference_x8"
+      },
+      "class_type": "SaveVideo",
+      "_meta": {
+        "title": "���������Ƶ"
+      }
+    },
+    "60": {
+      "inputs": {
+        "pixels": [
+          "15",
+          0
+        ],
+        "vae": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "VAEEncode",
+      "_meta": {
+        "title": "β��RGB���±���"
+      }
+    },
+    "61": {
+      "inputs": {
+        "samples": [
+          "60",
+          0
+        ],
+        "vae": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "VAEDecode",
+      "_meta": {
+        "title": "β���ر�������"
+      }
+    },
+    "62": {
+      "inputs": {
+        "reference": [
+          "15",
+          0
+        ],
+        "comparison": [
+          "61",
+          0
+        ],
+        "difference_gain": 8.0
+      },
+      "class_type": "MiniMaxH3VisualDifferenceMetrics",
+      "_meta": {
+        "title": "����VAE����ɫ��"
+      }
+    },
+    "63": {
+      "inputs": {
+        "text": "",
+        "anything": [
+          "62",
+          0
+        ]
+      },
+      "class_type": "easy showAnything",
+      "_meta": {
+        "title": "��ʾVAE����ָ��"
+      }
+    },
+    "64": {
+      "inputs": {
+        "fps": 24.0,
+        "images": [
+          "61",
+          0
+        ],
+        "color_space": "sRGB",
+        "bit_depth": 8
+      },
+      "class_type": "CreateVideo",
+      "_meta": {
+        "title": "VAE����β����Ƶ"
+      }
+    },
+    "65": {
+      "inputs": {
+        "format": "auto",
+        "codec": "auto",
+        "format.codec": "auto",
+        "video-preview": "",
+        "video": [
+          "64",
+          0
+        ],
+        "filename_prefix": "video/H3_latent_ab/04_tail_after_VAE_roundtrip"
+      },
+      "class_type": "SaveVideo",
+      "_meta": {
+        "title": "����VAE����β��"
+      }
+    }
+  },
+  "client_id": "minimax-h3-latent-ab"
+}

@@ -13,8 +13,10 @@ function installStyles() {
   style.textContent = `
     .m3td { --bg:#11141b; --panel:#191e28; --line:#30384a; --text:#e9eef8; --muted:#919bad;
       --cyan:#43d9d1; --blue:#477ff0; --amber:#f3af4e; --red:#ef6a77; box-sizing:border-box;
-      position:relative; width:100%; max-width:100%; height:100%; min-height:520px; color:var(--text); background:var(--bg); border:1px solid #2b3241;
+      position:relative; width:100%; max-width:100%; height:auto; min-height:0; color:var(--text); background:var(--bg); border:1px solid #2b3241;
       border-radius:9px; overflow:hidden; font:12px/1.35 Inter,Segoe UI,Arial,sans-serif; user-select:none; }
+    .m3td-widget-host { pointer-events:none !important; }
+    .m3td-widget-host .m3td { pointer-events:auto; }
     .m3td * { box-sizing:border-box; }
     .m3td button,.m3td input { font:inherit; }
     .m3td-head { display:flex; align-items:center; gap:6px; padding:8px; background:linear-gradient(180deg,#242a37,#1c222d);
@@ -115,6 +117,24 @@ function installStyles() {
       white-space:nowrap; background:#000a; color:#fff; font-size:10px; }
     .m3td-asset-x { position:absolute; right:2px; top:2px; width:17px; height:17px; border:0; border-radius:50%; color:#fff;
       background:#9c3345cc; cursor:pointer; }
+    .m3td-segments { padding:8px; border-top:1px solid var(--line); background:#0d1219; }
+    .m3td-segments[hidden] { display:none; }
+    .m3td-segment-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:7px;
+      color:#cbd6e7; }
+    .m3td-segment-note { color:#7f8ba0; }
+    .m3td-segment-list { display:grid; gap:7px; }
+    .m3td-segment { min-width:0; border:1px solid #313a4c; border-radius:6px; overflow:hidden; background:#141a23; }
+    .m3td-segment-title { display:flex; align-items:center; justify-content:space-between; min-height:28px; padding:5px 8px;
+      color:#dce6f6; background:#202735; border-bottom:1px solid #30394a; }
+    .m3td-segment-title small { color:#7f8ba0; }
+    .m3td-segment-bins { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px; padding:6px; }
+    .m3td-segment-bin { min-width:0; min-height:68px; padding:4px; border:1px dashed #3a465b; border-radius:5px;
+      background:#101620; }
+    .m3td-segment-bin.drag-over { border-color:var(--cyan); background:#102421; }
+    .m3td-segment-bin-label { margin:0 0 4px 2px; color:#8e9bb0; font-size:10px; }
+    .m3td-segment-bin-list { min-height:46px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:4px; }
+    .m3td-segment .m3td-asset { width:72px; height:44px; }
+    .m3td-segment .m3td-asset.audio { width:112px; }
     .m3td-foot { display:flex; align-items:center; gap:9px; min-height:31px; padding:5px 9px; color:#8f9bad; background:#141922; }
     .m3td-tags { color:#a9d8d4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .m3td-progress { width:90px; height:4px; overflow:hidden; border-radius:2px; background:#303746; }
@@ -172,7 +192,16 @@ function forwardWheelEvent(event, canvas) {
 }
 
 function emptyState() {
-  return { version: 3, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [] };
+  return { version: 4, fps: 24, selection: { start: 0, duration: 5 }, videoAudioEnabled: true, videoClips: [], images: [], audios: [], segmentConfig:{count:0,segments:[]} };
+}
+
+function normalizedAssetIds(values, validIds) {
+  const result=[];
+  for(const value of Array.isArray(values)?values:[]){
+    const id=String(value);
+    if(validIds.has(id)&&!result.includes(id))result.push(id);
+  }
+  return result;
 }
 
 function normalizeState(raw) {
@@ -191,6 +220,14 @@ function normalizeState(raw) {
   })) : [];
   base.images = Array.isArray(raw.images) ? raw.images.filter(x => x?.file).slice(0, 9).map(a => ({ id:a.id || uid(), ...a })) : [];
   base.audios = Array.isArray(raw.audios) ? raw.audios.filter(x => x?.file).slice(0, 3).map(a => ({ id:a.id || uid(), ...a })) : [];
+  const imageIds=new Set(base.images.map(a=>String(a.id))),audioIds=new Set(base.audios.map(a=>String(a.id)));
+  const rawConfig=raw.segmentConfig&&typeof raw.segmentConfig==="object"?raw.segmentConfig:{};
+  const count=clamp(Math.floor(num(rawConfig.count,0)),0,64);
+  const sourceSegments=Array.isArray(rawConfig.segments)?rawConfig.segments:[];
+  base.segmentConfig={count,segments:Array.from({length:count},(_,index)=>{
+    const segment=sourceSegments[index]&&typeof sourceSegments[index]==="object"?sourceSegments[index]:{};
+    return {images:normalizedAssetIds(segment.images,imageIds),audios:normalizedAssetIds(segment.audios,audioIds)};
+  })};
   return base;
 }
 
@@ -221,7 +258,10 @@ class TimelineDirectorUI {
     this.previewRAF = 0;
     this.layoutRAF = 0;
     this.previewClipId = null;
+    this.segmentCountDraft = this.state.segmentConfig.count;
     this.build();
+    this.contentResizeObserver = new ResizeObserver(() => this.scheduleNodeHeightSync());
+    this.contentResizeObserver.observe(this.root);
     this.bindGenerationWidget();
     this.syncGenerationWidget();
     this.render();
@@ -385,6 +425,8 @@ class TimelineDirectorUI {
         <label class="m3td-field">缩放 <input data-field="zoom" type="range" min="24" max="180" step="4"></label>
         <button class="m3td-btn" data-action="fit">适应全部</button>
         <button class="m3td-btn" data-action="fitGap">匹配最近空隙</button>
+        <label class="m3td-field">素材分段 <input data-field="segmentCount" type="number" min="0" max="64" step="1"></label>
+        <button class="m3td-btn" data-action="applySegments">更新分段</button>
         <span class="m3td-help">拖动片段/播放头 · 边缘自动吸附 · 选区时长=生成时长</span>
       </div>
       <div class="m3td-timeline-shell">
@@ -405,6 +447,10 @@ class TimelineDirectorUI {
       <div class="m3td-assets">
         <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考图片（0/9）</span><span>拖拽排序 · &lt;Picture i&gt;</span></div><div class="m3td-bin-list" data-bin="images"></div></section>
         <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考音频（0/3）</span><span>拖拽排序 · &lt;Audio j&gt;</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
+      </div>
+      <div class="m3td-segments" hidden>
+        <div class="m3td-segment-head"><strong>按提示词序号分配素材</strong><span class="m3td-segment-note">从上方素材库拖入；每段 Picture / Audio 都从 1 重新编号</span></div>
+        <div class="m3td-segment-list"></div>
       </div>
       <div class="m3td-foot"><strong>提示词编号：</strong><span class="m3td-tags"></span></div>
       <input hidden data-upload="video" type="file" accept="video/*" multiple>
@@ -429,6 +475,7 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-action="delete"]').onclick = () => this.deleteSelected();
     this.root.querySelector('[data-action="fit"]').onclick = () => this.fitTimeline();
     this.root.querySelector('[data-action="fitGap"]').onclick = () => this.fitSelectionToNearestGap();
+    this.root.querySelector('[data-action="applySegments"]').onclick = () => this.applySegmentCount();
     this.videoAudioToggle.onclick = event => {
       event.stopPropagation();
       this.state.videoAudioEnabled = !this.state.videoAudioEnabled;
@@ -450,6 +497,7 @@ class TimelineDirectorUI {
     const startInput = this.root.querySelector('[data-field="selectionStart"]');
     const durInput = this.root.querySelector('[data-field="selectionDuration"]');
     const zoomInput = this.root.querySelector('[data-field="zoom"]');
+    const segmentCountInput = this.root.querySelector('[data-field="segmentCount"]');
     this.root.addEventListener("input", event => {
       if (event.target === startInput) {
         this.state.selection.start = Math.max(0, num(startInput.value));
@@ -458,6 +506,8 @@ class TimelineDirectorUI {
       } else if (event.target === durInput) {
         this.state.selection.duration = Math.max(5/24, num(durInput.value, 5));
         this.sync();
+      } else if (event.target === segmentCountInput) {
+        this.segmentCountDraft=clamp(Math.floor(num(segmentCountInput.value,0)),0,64);
       }
     });
     startInput.onchange = durInput.onchange = () => this.render();
@@ -523,6 +573,7 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-field="selectionStart"]').value = this.state.selection.start.toFixed(2);
     this.root.querySelector('[data-field="selectionDuration"]').value = this.state.selection.duration.toFixed(2);
     this.root.querySelector('[data-field="zoom"]').value = this.zoom;
+    this.root.querySelector('[data-field="segmentCount"]').value = this.segmentCountDraft;
     if (this.videoAudioToggle) {
       this.videoAudioToggle.textContent = this.state.videoAudioEnabled ? "关闭" : "开启";
       this.videoAudioToggle.classList.toggle("off", !this.state.videoAudioEnabled);
@@ -532,6 +583,7 @@ class TimelineDirectorUI {
     this.renderTimeline();
     this.renderInspector();
     this.renderAssets();
+    this.renderSegments();
     this.renderTags();
     this.scheduleNodeHeightSync();
   }
@@ -539,10 +591,8 @@ class TimelineDirectorUI {
   requiredDirectorHeight() {
     const foot = this.root.querySelector(".m3td-foot");
     if (!foot) return DIRECTOR_HEIGHT;
-    const currentWidgetHeight = this.directorWidget?.__m3tdHeight || DIRECTOR_HEIGHT;
-    const widgetChrome = Math.max(0, currentWidgetHeight - this.root.clientHeight);
     const contentHeight = Math.ceil(foot.offsetTop + foot.offsetHeight + 2);
-    return Math.max(DIRECTOR_HEIGHT, contentHeight + widgetChrome);
+    return Math.max(DIRECTOR_HEIGHT, contentHeight);
   }
 
   scheduleNodeHeightSync() {
@@ -554,7 +604,9 @@ class TimelineDirectorUI {
       const currentWidth = this.node.size?.[0] || computed?.[0] || 860;
       const currentHeight = this.node.size?.[1] || 0;
       const minimumHeight = Math.ceil(computed?.[1] || desiredHeight);
-      if (currentHeight + 1 < minimumHeight) this.node.setSize?.([currentWidth, minimumHeight]);
+      if (Math.abs(currentHeight - minimumHeight) > 1) {
+        this.node.setSize?.([currentWidth, minimumHeight]);
+      }
       this.node.setDirtyCanvas?.(true, true);
     });
   }
@@ -857,8 +909,8 @@ class TimelineDirectorUI {
     this.root.querySelectorAll(".m3td-bin-title span:first-child")[1].textContent = `独立参考音频（${this.state.audios.length}/3）`;
     imageBin.innerHTML = this.state.images.map((a,i) => `<div class="m3td-asset" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="images" title="拖拽调整参考顺序"><img draggable="false" src="${esc(viewURL(a.file))}"><span class="m3td-asset-tag">&lt;Picture ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-image="${esc(a.id)}">×</button></div>`).join("");
     audioBin.innerHTML = this.state.audios.map((a,i) => `<div class="m3td-asset audio" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="audios" title="拖拽调整参考顺序"><span class="m3td-asset-tag">&lt;Audio ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-audio="${esc(a.id)}">×</button></div>`).join("");
-    for (const b of imageBin.querySelectorAll("[data-remove-image]")) b.onclick=e=>{e.stopPropagation();this.state.images=this.state.images.filter(a=>a.id!==b.dataset.removeImage);this.sync();this.render();};
-    for (const b of audioBin.querySelectorAll("[data-remove-audio]")) b.onclick=e=>{e.stopPropagation();this.state.audios=this.state.audios.filter(a=>a.id!==b.dataset.removeAudio);this.sync();this.render();};
+    for (const b of imageBin.querySelectorAll("[data-remove-image]")) b.onclick=e=>{e.stopPropagation();this.state.images=this.state.images.filter(a=>a.id!==b.dataset.removeImage);this.pruneSegmentAssignments();this.sync();this.render();};
+    for (const b of audioBin.querySelectorAll("[data-remove-audio]")) b.onclick=e=>{e.stopPropagation();this.state.audios=this.state.audios.filter(a=>a.id!==b.dataset.removeAudio);this.pruneSegmentAssignments();this.sync();this.render();};
     this.bindAssetReorder(imageBin,"images","图片");
     this.bindAssetReorder(audioBin,"audios","音频");
   }
@@ -868,8 +920,12 @@ class TimelineDirectorUI {
     for(const card of bin.querySelectorAll(".m3td-asset")){
       card.ondragstart=e=>{
         if(e.target.closest?.("button")){e.preventDefault();return;}
-        this.assetDrag={kind,id:card.dataset.assetId};card.classList.add("dragging");
-        e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",card.dataset.assetId);
+        this.assetDrag={kind,id:card.dataset.assetId,source:"library"};card.classList.add("dragging");
+        // Library cards are moved when reordered inside the library, but copied
+        // when assigned to one or more prompt segments.  `move` alone makes a
+        // segment's `dropEffect = "copy"` invalid, so Chromium shows drag-over
+        // feedback yet cancels the final drop.
+        e.dataTransfer.effectAllowed="copyMove";e.dataTransfer.setData("text/plain",card.dataset.assetId);
       };
       card.ondragover=e=>{
         if(!this.assetDrag||this.assetDrag.kind!==kind||this.assetDrag.id===card.dataset.assetId)return;
@@ -889,6 +945,80 @@ class TimelineDirectorUI {
     }
   }
 
+  applySegmentCount() {
+    const count=clamp(Math.floor(num(this.segmentCountDraft,0)),0,64);
+    const previous=Array.isArray(this.state.segmentConfig?.segments)?this.state.segmentConfig.segments:[];
+    this.state.segmentConfig={count,segments:Array.from({length:count},(_,index)=>({
+      images:[...(previous[index]?.images||[])],
+      audios:[...(previous[index]?.audios||[])],
+    }))};
+    this.segmentCountDraft=count;
+    this.pruneSegmentAssignments();
+    this.sync();this.render();
+    this.setStatus(count?`已建立 ${count} 个素材分段；请把图片和音频拖入对应段`:`已关闭素材分段；将继续使用全部图片和音频`);
+  }
+
+  pruneSegmentAssignments() {
+    const imageIds=new Set(this.state.images.map(item=>String(item.id)));
+    const audioIds=new Set(this.state.audios.map(item=>String(item.id)));
+    for(const segment of this.state.segmentConfig?.segments||[]){
+      segment.images=normalizedAssetIds(segment.images,imageIds);
+      segment.audios=normalizedAssetIds(segment.audios,audioIds);
+    }
+  }
+
+  segmentAssetHTML(kind,id,localIndex,segmentIndex) {
+    const asset=this.state[kind].find(item=>String(item.id)===String(id));
+    if(!asset)return "";
+    const isImage=kind==="images";
+    return `<div class="m3td-asset ${isImage?"":"audio"}" draggable="true" data-segment-asset="${esc(id)}" data-segment-kind="${kind}" data-segment-index="${segmentIndex}" title="拖动调整本段顺序，或拖到其他分段复用">
+      ${isImage?`<img draggable="false" src="${esc(viewURL(asset.file))}">`:""}
+      <span class="m3td-asset-tag">&lt;${isImage?"Picture":"Audio"} ${localIndex+1}&gt;</span>
+      <span class="m3td-asset-name">${esc(asset.name)}</span>
+      <button draggable="false" class="m3td-asset-x" data-remove-segment-asset="${esc(id)}">×</button></div>`;
+  }
+
+  renderSegments() {
+    const section=this.root.querySelector(".m3td-segments"),list=this.root.querySelector(".m3td-segment-list");
+    const count=this.state.segmentConfig?.count||0;
+    section.hidden=count<=0;
+    if(count<=0){list.innerHTML="";return;}
+    list.innerHTML=this.state.segmentConfig.segments.map((segment,index)=>`<section class="m3td-segment" data-segment="${index}">
+      <div class="m3td-segment-title"><strong>第 ${index+1} 段</strong><span>匹配提示词序号 ${index+1} · 本段编号从 1 开始</span></div>
+      <div class="m3td-segment-bins">
+        <div class="m3td-segment-bin" data-segment-drop="images" data-segment-index="${index}"><label>参考图片（拖入此处）</label>${segment.images.map((id,i)=>this.segmentAssetHTML("images",id,i,index)).join("")}</div>
+        <div class="m3td-segment-bin" data-segment-drop="audios" data-segment-index="${index}"><label>参考音频（拖入此处）</label>${segment.audios.map((id,i)=>this.segmentAssetHTML("audios",id,i,index)).join("")}</div>
+      </div></section>`).join("");
+    for(const button of list.querySelectorAll("[data-remove-segment-asset]"))button.onclick=event=>{
+      event.stopPropagation();
+      const card=button.closest("[data-segment-asset]"),segment=this.state.segmentConfig.segments[num(card.dataset.segmentIndex)];
+      segment[card.dataset.segmentKind]=segment[card.dataset.segmentKind].filter(id=>String(id)!==String(card.dataset.segmentAsset));
+      this.sync();this.render();
+    };
+    const clear=()=>{for(const item of list.querySelectorAll(".drag-over,.drop-before,.drop-after,.dragging"))item.classList.remove("drag-over","drop-before","drop-after","dragging");};
+    const place=(kind,segmentIndex,targetId=null,after=true)=>{
+      if(!this.assetDrag||this.assetDrag.kind!==kind)return false;
+      const segment=this.state.segmentConfig.segments[segmentIndex];if(!segment)return false;
+      let values=segment[kind].filter(id=>String(id)!==String(this.assetDrag.id));
+      if(targetId==null)values.push(this.assetDrag.id);
+      else {const at=values.findIndex(id=>String(id)===String(targetId));values.splice(at<0?values.length:at+(after?1:0),0,this.assetDrag.id);}
+      segment[kind]=values;return true;
+    };
+    for(const bin of list.querySelectorAll("[data-segment-drop]")){
+      const kind=bin.dataset.segmentDrop,index=num(bin.dataset.segmentIndex);
+      bin.ondragover=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect=this.assetDrag.source==="library"?"copy":"move";bin.classList.add("drag-over");};
+      bin.ondragleave=event=>{if(!bin.contains(event.relatedTarget))bin.classList.remove("drag-over");};
+      bin.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();if(event.target.closest?.("[data-segment-asset]"))return;if(place(kind,index)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(`第 ${index+1} 段素材已更新`);}};
+    }
+    for(const card of list.querySelectorAll("[data-segment-asset]")){
+      const kind=card.dataset.segmentKind,index=num(card.dataset.segmentIndex),id=card.dataset.segmentAsset;
+      card.ondragstart=event=>{if(event.target.closest?.("button")){event.preventDefault();return;}this.assetDrag={kind,id,source:"segment",segmentIndex:index};card.classList.add("dragging");event.dataTransfer.effectAllowed="copyMove";event.dataTransfer.setData("text/plain",id);};
+      card.ondragover=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind||this.assetDrag.id===id)return;event.preventDefault();event.stopPropagation();const rect=card.getBoundingClientRect(),after=event.clientX>=rect.left+rect.width/2;for(const other of card.parentElement.querySelectorAll("[data-segment-asset]"))other.classList.remove("drop-before","drop-after");card.classList.add(after?"drop-after":"drop-before");};
+      card.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();const rect=card.getBoundingClientRect(),after=event.clientX>=rect.left+rect.width/2;if(place(kind,index,id,after)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(`第 ${index+1} 段素材顺序已更新`);}};
+      card.ondragend=()=>{this.assetDrag=null;clear();};
+    }
+  }
+
   renderTags() {
     const plan=this.referencePlan();
     const independentPictures=this.state.images.length;
@@ -901,7 +1031,8 @@ class TimelineDirectorUI {
     const guideText=plan.guidePieces.length ? `${fullGuides ? `原生固定 ${fullGuides}段` : ""}${fullGuides&&edgeGuides ? " + " : ""}${edgeGuides ? `边界固定 ${edgeGuides}段` : ""}/${guideFrames}帧` : (plan.gapGuideCount ? `空隙首尾 Guide ${plan.gapGuideCount}帧` : "无固定 Guide");
     const standaloneAudio=this.state.audios.length ? `独立音频 <Audio 1..${this.state.audios.length}>` : "无独立音频";
     const pairedAudio=!this.state.videoAudioEnabled ? "视频原声：参考已关闭" : (plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签");
-    this.root.querySelector(".m3td-tags").textContent = `${pictureText} · ${guideText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
+    const segmentText=this.state.segmentConfig.count?`素材分段 ${this.state.segmentConfig.count} 段（按提示词序号筛选）`:"未启用素材分段";
+    this.root.querySelector(".m3td-tags").textContent = `${segmentText} · ${pictureText} · ${guideText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
   }
 
   splitSelected() {
@@ -967,9 +1098,9 @@ class TimelineDirectorUI {
     finally{this.uploading=false;setTimeout(()=>{this.progress.style.width="0";},800);}
   }
 
-  reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
+  reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.segmentCountDraft=this.state.segmentConfig.count;this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
   destroy() {
-    cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.layoutRAF);this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
+    cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.layoutRAF);this.contentResizeObserver?.disconnect();this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
     this.root.removeEventListener("wheel",this.forwardWheel);
     if(this.externalDropHandlers){
       this.root.removeEventListener("dragenter",this.externalDropHandlers.showDropTarget,true);
@@ -991,16 +1122,39 @@ app.registerExtension({
       const timelineWidget=this.widgets?.find(w=>w.name==="timeline_data");
       if(timelineWidget){
         timelineWidget.type="hidden"; timelineWidget.computeSize=()=>[0,-4];
-        const timelineElement=timelineWidget.element || timelineWidget.inputEl;
-        if(timelineElement){timelineElement.style.display="none";timelineElement.parentElement && (timelineElement.parentElement.style.display="none");}
+        // Modern ComfyUI may recreate/reset DOM widget wrappers while a node is
+        // resized.  Hiding the textarea only once therefore leaves an invisible
+        // full-node overlay which still intercepts canvas drags.  Keep a small
+        // idempotent hider on the node and run it after every relevant lifecycle
+        // event.  Hide the real `.dom-widget` host, not its canvas transform
+        // parent (`.isolate`).
+        this.__m3tdHideTimelineWidget=()=>{
+          const timelineElement=timelineWidget.element || timelineWidget.inputEl;
+          if(!timelineElement)return false;
+          const timelineHost=timelineElement.closest?.(".dom-widget") || timelineElement.parentElement;
+          timelineElement.style.setProperty("display","none","important");
+          timelineElement.style.setProperty("pointer-events","none","important");
+          if(timelineHost){
+            timelineHost.style.setProperty("display","none","important");
+            timelineHost.style.setProperty("pointer-events","none","important");
+            timelineHost.style.setProperty("height","0px","important");
+            timelineHost.style.setProperty("min-height","0px","important");
+          }
+          return true;
+        };
+        this.__m3tdHideTimelineWidget();
       }
       this.size=[Math.max(this.size?.[0]||0,860),this.size?.[1]||0];
       const root=document.createElement("div");
       const directorWidget=this.addDOMWidget("minimax_h3_timeline","div",root,{serialize:false,hideOnZoom:false});
+      requestAnimationFrame(()=>root.parentElement?.classList.add("m3td-widget-host"));
       directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),directorWidget.__m3tdHeight||DIRECTOR_HEIGHT];
       const brand=nodeData.name==="MiniMaxH3TimelinePlanner"?"MiniMax H3 素材规划台":"MiniMax H3 时间线导演台（兼容）";
       this.__m3td=new TimelineDirectorUI(this,root,timelineWidget,brand);
       this.__m3td.directorWidget=directorWidget;
+      // The Vue DOM widget can mount one or more frames after onNodeCreated.
+      // Retry after mount; subsequent resize/configure hooks keep it hidden.
+      for(const delay of [0,50,250,1000])setTimeout(()=>this.__m3tdHideTimelineWidget?.(),delay);
       requestAnimationFrame(()=>{
         this.__m3td?.scheduleNodeHeightSync();
         const computed=this.computeSize?.()||[860,820];
@@ -1010,9 +1164,9 @@ app.registerExtension({
       return result;
     };
     const originalResize=nodeType.prototype.onResize;
-    nodeType.prototype.onResize=function(){const result=originalResize?.apply(this,arguments);this.__m3td?.scheduleNodeHeightSync();return result;};
+    nodeType.prototype.onResize=function(){const result=originalResize?.apply(this,arguments);this.__m3tdHideTimelineWidget?.();this.__m3td?.scheduleNodeHeightSync();return result;};
     const originalConfigure=nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure=function(){const result=originalConfigure?.apply(this,arguments);setTimeout(()=>{this.__m3td?.reload();this.__m3td?.scheduleNodeHeightSync();},0);return result;};
+    nodeType.prototype.onConfigure=function(){const result=originalConfigure?.apply(this,arguments);setTimeout(()=>{this.__m3tdHideTimelineWidget?.();this.__m3td?.reload();this.__m3td?.scheduleNodeHeightSync();},0);return result;};
     const originalRemoved=nodeType.prototype.onRemoved;
     nodeType.prototype.onRemoved=function(){this.__m3td?.destroy();return originalRemoved?.apply(this,arguments);};
   }

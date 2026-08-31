@@ -13,6 +13,7 @@ native ``MiniMaxH3AddGuide`` keyframe guides:
 from __future__ import annotations
 
 import asyncio
+import copy
 import hashlib
 import importlib
 import inspect
@@ -719,12 +720,82 @@ def _video_reference_specs(timeline: dict[str, Any]) -> list[dict[str, Any]]:
     return specs
 
 
+def _ordered_segment_assets(
+    assets: list[Any], requested_ids: Any
+) -> list[dict[str, Any]]:
+    """Return one segment's assets in its explicit drag order.
+
+    Segment membership is stored by stable UI ids instead of list positions, so
+    deleting or reordering the global upload library cannot silently point a
+    segment at a different file.
+    """
+
+    by_id = {
+        str(asset.get("id")): asset
+        for asset in assets
+        if isinstance(asset, dict) and asset.get("id") and asset.get("file")
+    }
+    ordered: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in requested_ids if isinstance(requested_ids, list) else []:
+        asset_id = str(value)
+        asset = by_id.get(asset_id)
+        if asset is not None and asset_id not in seen:
+            ordered.append(asset)
+            seen.add(asset_id)
+    return ordered
+
+
+def _timeline_for_prompt_index(
+    timeline: dict[str, Any], prompt_index: Any = None
+) -> tuple[dict[str, Any], int | None, int]:
+    """Apply the optional 1-based prompt/segment material assignment.
+
+    With no connected prompt index, or with segment count zero, the legacy
+    unsegmented timeline is returned unchanged.  Once segmentation is enabled,
+    independent images and audio are filtered and ordered per segment; all
+    downstream Picture/Audio labels therefore restart from one automatically.
+    """
+
+    result = copy.deepcopy(timeline)
+    config = result.get("segmentConfig")
+    if not isinstance(config, dict):
+        return result, None, 0
+    segment_count = max(0, int(_float(config.get("count"), 0)))
+    if segment_count <= 0 or prompt_index is None:
+        return result, None, segment_count
+
+    selected_index = max(1, int(_float(prompt_index, 1)))
+    segments = config.get("segments")
+    if not isinstance(segments, list) or selected_index > segment_count:
+        raise ValueError(
+            f"提示词序号 {selected_index} 超出素材规划台的 {segment_count} 个分段；"
+            "请让Loop次数、分段提示词数量和规划台分段数量保持一致。"
+        )
+    while len(segments) < segment_count:
+        segments.append({})
+    selected = segments[selected_index - 1]
+    if not isinstance(selected, dict):
+        selected = {}
+
+    result["images"] = _ordered_segment_assets(
+        list(result.get("images") or []), selected.get("images")
+    )
+    result["audios"] = _ordered_segment_assets(
+        list(result.get("audios") or []), selected.get("audios")
+    )
+    return result, selected_index, segment_count
+
+
 def _create_timeline_plan(
-    timeline_data: str, width: Any, height: Any, generation_seconds: Any
+    timeline_data: str, width: Any, height: Any, generation_seconds: Any,
+    prompt_index: Any = None,
 ) -> dict[str, Any]:
     """Create the lightweight, serializable half of the split-node workflow."""
 
-    timeline = _parse_timeline(timeline_data)
+    timeline, selected_segment, segment_count = _timeline_for_prompt_index(
+        _parse_timeline(timeline_data), prompt_index
+    )
     target_width, target_height = int(width), int(height)
     seconds = max(MIN_REF_VIDEO_SECONDS, _float(generation_seconds, 5.0))
     selection = timeline.setdefault("selection", {})
@@ -740,6 +811,8 @@ def _create_timeline_plan(
         "height": target_height,
         "generation_seconds": seconds,
         "length": _aligned_h3_length(seconds),
+        "prompt_index": selected_segment,
+        "segment_count": segment_count,
     }
 
 
@@ -1328,6 +1401,13 @@ class MiniMaxH3TimelinePlanner(io.ComfyNode):
             ),
             category="model/conditioning/minimax",
             inputs=[
+                io.Int.Input(
+                    "prompt_index", display_name="提示词序号", optional=True,
+                    force_input=True, tooltip=(
+                        "可选。连接“MiniMax H3 循环分段提示词”的提示词序号后，"
+                        "仅输出该分段配置的图片和独立音频；不连接时保持原有单段逻辑。"
+                    ),
+                ),
                 io.Int.Input("width", default=1344, min=32, max=16384, step=32),
                 io.Int.Input("height", default=768, min=32, max=16384, step=32),
                 io.Float.Input(
@@ -1337,14 +1417,18 @@ class MiniMaxH3TimelinePlanner(io.ComfyNode):
                 io.String.Input("timeline_data", default="", multiline=True),
             ],
             outputs=[
-                TimelinePlan.Output(display_name="素材规划"),
+                TimelinePlan.Output(display_name="素材规划参数"),
                 PromptMediaBundle.Output(display_name="Omni素材包"),
             ],
         )
 
     @classmethod
-    def execute(cls, width, height, generation_seconds, timeline_data="") -> io.NodeOutput:
-        plan = _create_timeline_plan(timeline_data, width, height, generation_seconds)
+    def execute(
+        cls, width, height, generation_seconds, timeline_data="", prompt_index=None
+    ) -> io.NodeOutput:
+        plan = _create_timeline_plan(
+            timeline_data, width, height, generation_seconds, prompt_index
+        )
         return io.NodeOutput(plan, _create_prompt_media_bundle(plan))
 
 

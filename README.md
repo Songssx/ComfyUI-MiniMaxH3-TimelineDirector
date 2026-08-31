@@ -13,6 +13,8 @@
 
 [简体中文](README_CN.md) · English
 
+> **Experimental branch build `0.5.0.dev0`:** this branch contains generic Loop, direct-latent continuation, and per-prompt segmented material planning for long-video testing. The stable release remains on `main`.
+
 An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference to Video** workflow. It brings reference videos, paired soundtracks, fixed Guides, standalone images, and standalone audio into one compact editing surface.
 
 > Video-generation agents should read the [Chinese segmented long-video guide](docs/AGENT_LONG_VIDEO_GUIDE_CN.md).
@@ -92,6 +94,18 @@ Adds **MiniMax-H3 Prompt Rewriter Omni (sees and hears)** so the same ordered me
 
 > This workflow requires [MiniMax-H3-Prompt-Rewriter-ComfyUI](https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI). Follow that project's instructions for model, quantization, and VRAM requirements.
 
+### 4. Loop-based segmented long-video generation (experimental)
+
+This workflow selects prompts and per-segment reference media by Loop iteration, carries the previous sampled H3 video/audio latent tail directly into the next segment as a Guide, and removes duplicated overlap frames and matching audio before final assembly. Each segment can have its own images and audio, renumbered from `<Picture 1>` and `<Audio 1>`.
+
+[Download long-video Loop workflow](example_workflows/MiniMax时间线循环长视频分段生成工作流.json)
+
+[Chinese segmented-prompt Agent specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
+
+![Loop-based segmented long-video workflow](docs/images/workflow-long-video-loop.jpg)
+
+> The example currently depends on the Loop implementation from [ComfyUI generic-loop PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923) and is an experimental test workflow. Verify segment count, frame count, FPS, and `overlap_frames` before running it.
+
 ## Basic usage
 
 1. Set `width`, `height`, and `generation_seconds`.
@@ -109,6 +123,12 @@ Videos are numbered left-to-right by their intersections with the cyan range. St
 ## Segmented long-video generation
 
 Generate long videos in overlapping segments. Use the previous segment's final shot as the next segment's opening Guide, and describe that overlap as `Shot 1` before new content. When assembling segments, remove the repeated Guide interval from the later segment. See the [Chinese agent guide](docs/AGENT_LONG_VIDEO_GUIDE_CN.md) for the full procedure.
+
+### Experimental direct-latent loop
+
+Three optional helpers integrate with ComfyUI's generic loop: a per-iteration H3 prompt selector, a direct AV-latent continuation node, and a decoded overlap trimmer. Together they carry the previous sampled latent tail into the next segment without an RGB decode/re-encode round trip, while removing duplicated video and audio before incremental export.
+
+This currently requires the draft [ComfyUI generic-loop PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923). See the [Chinese latent-loop guide](docs/LATENT_LOOP_LONG_VIDEO_CN.md), the [segmented-prompt Agent specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md), and `tests/experiments/run_minimax_h3_latent_loop.py`.
 
 ## Credits
 

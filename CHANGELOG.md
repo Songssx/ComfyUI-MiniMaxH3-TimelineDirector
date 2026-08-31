@@ -6,6 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+### Added
+
+- Add optional `提示词序号` input to the material planner for Loop-driven, per-segment image/audio selection.
+- Add an explicit segment-count setup flow and drag-and-drop per-segment material boards; Picture/Audio ordinals restart from 1 inside every segment.
+- Add `MiniMax时间线循环工作流.json`, wiring the loop prompt ordinal to the planner's new optional input.
+- Add the complete `MiniMax时间线循环长视频分段生成工作流.json`, its compressed README preview, and an updated Chinese Agent specification for writing parseable loop-segment prompts.
+
+### Compatibility
+
+- Existing workflows with no prompt-index connection or a segment count of 0 continue to use the complete reference library.
+
+### Fixed
+
+- Remove stale invisible DOM hit areas after node resizing or segment-panel contraction: the director now measures natural content height, shrinks as well as grows, and leaves unused DOM-widget space transparent to ComfyUI canvas pointer events.
+- Keep the hidden `timeline_data` multiline widget hidden after ComfyUI recreates or resets its DOM wrapper during resize/configure. Its real `.dom-widget` host is now collapsed to zero and cannot intercept canvas drags.
+- Allow independent image/audio cards to be copied into per-prompt segment bins while retaining move-based reordering inside the source library. This fixes drag-over highlighting followed by a cancelled drop.
+
+### Experimental
+
+- Add an opt-in `MiniMax H3 Direct Latent Guide` node for controlled continuation tests that reuse a sampled H3 video-latent tail without an RGB decode/encode round trip.
+- Add an objective video-difference node and a reproducible API workflow comparing native RGB Guide, direct latent Guide, and a single VAE round trip. Production planner, encoder, and compatibility-director behavior is unchanged.
+- Add three opt-in generic-loop helpers: segmented H3 prompt selection, direct AV-latent continuation, and decoded overlap removal.
+- Add a reproducible three-segment API workflow that uses ComfyUI PR #15923 `Loop` / `Loop Variable`, carries the previous sampled AV latent into the next iteration, and incrementally encodes the deduplicated final video.
+- Verify a real three-iteration 640x352 H3 run: 124 source frames plus two 102-frame deduplicated continuations produced exactly 328 frames with a synchronized audio stream.
+
 ## [0.4.1] - 2026-08-27
 
 ### Fixed
