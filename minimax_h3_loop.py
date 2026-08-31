@@ -15,6 +15,7 @@ import node_helpers
 from comfy_api.latest import io
 
 from .experimental_latent_guide import (
+    _apply_linear_temporal_noise_mask,
     _build_direct_latent_keyframe,
     _valid_guide_frames,
 )
@@ -145,7 +146,8 @@ class MiniMaxH3LoopLatentGuide(io.ComfyNode):
             category="MiniMax H3/长视频循环",
             description=(
                 "连接 Loop Variable 的 current_value。第一轮原样通过；后续轮次把上一轮完整 "
-                "H3 AV latent 的尾部直接固定到本轮开头，不经过 RGB 解码与 VAE 重编码。"
+                "H3 AV latent 的尾部直接放到本轮开头，并按重叠帧数生成从 0 到 1 的线性时间 "
+                "噪声遮罩，不经过 RGB 解码与 VAE 重编码。"
             ),
             inputs=[
                 io.Conditioning.Input("positive"),
@@ -207,6 +209,12 @@ class MiniMaxH3LoopLatentGuide(io.ComfyNode):
             frame_idx=0,
             include_audio=bool(continue_audio_latent),
         )
+        masked_target, mask_details = _apply_linear_temporal_noise_mask(
+            target_latent=target_latent,
+            source_latent=previous_latent,
+            guide_frames=actual_overlap,
+            include_audio=bool(continue_audio_latent),
+        )
         keyframes = list(positive[0][1].get("minimax_keyframes", []))
         keyframes.append(keyframe)
         conditioned = node_helpers.conditioning_set_values(
@@ -220,7 +228,12 @@ class MiniMaxH3LoopLatentGuide(io.ComfyNode):
             status += f" / {details['audio_tokens']} 个音频 token"
         else:
             status += "；未固定音频 latent"
-        return io.NodeOutput(conditioned, target_latent, details["frames"], status)
+        status += (
+            f"；时间噪声遮罩按 {mask_details['video_tokens']} 个视频 token "
+            f"从 {mask_details['video_mask_start']:.1f} 线性过渡到 "
+            f"{mask_details['video_mask_end']:.1f}，其后保持 1.0"
+        )
+        return io.NodeOutput(conditioned, masked_target, details["frames"], status)
 
 
 class MiniMaxH3LoopSegmentFinalize(io.ComfyNode):

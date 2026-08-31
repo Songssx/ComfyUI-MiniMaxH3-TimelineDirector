@@ -11,6 +11,7 @@ from pathlib import Path
 import torch
 from aiohttp import web
 from comfy.nested_tensor import NestedTensor
+from comfy.sampler_helpers import prepare_mask
 from server import PromptServer
 
 
@@ -55,6 +56,7 @@ def main():
     assert first[0] is positive
     assert "minimax_keyframes" not in first[0][0][1]
     assert first[2] == 22
+    assert "noise_mask" not in first[1]
 
     second = loop.MiniMaxH3LoopLatentGuide.execute(
         positive, target, False, 1, 24, True, source
@@ -65,6 +67,35 @@ def main():
     assert torch.equal(keyframe["latent"], source_video[:, :, -7:])
     assert keyframe["audio_latent"].shape == (1, 32, 2, 37)
     assert torch.equal(keyframe["audio_latent"], source_audio[..., -37:])
+    masked_video, masked_audio = second[1]["samples"].unbind()
+    video_mask, audio_mask = second[1]["noise_mask"].unbind()
+    assert torch.equal(masked_video[:, :, :7], source_video[:, :, -7:])
+    assert torch.equal(masked_audio[..., :37], source_audio[..., -37:])
+    assert video_mask.shape == (1, 1, 37, 1, 1)
+    assert audio_mask.shape == (1, 1, 1, 207)
+    assert torch.allclose(video_mask[0, 0, :7, 0, 0], torch.linspace(0, 1, 7))
+    assert torch.all(video_mask[:, :, 7:] == 1)
+    assert torch.allclose(audio_mask[0, 0, 0, :37], torch.linspace(0, 1, 37))
+    assert torch.all(audio_mask[..., 37:] == 1)
+    assert "线性过渡" in second[3]
+    assert prepare_mask(video_mask, masked_video.shape, "cpu").shape == masked_video.shape
+    assert prepare_mask(audio_mask, masked_audio.shape, "cpu").shape == masked_audio.shape
+
+    # The ramp length follows the aligned overlap dynamically: 41 -> 39 frames
+    # -> 12 H3 video tokens. Disabling audio continuation leaves it fully noisy.
+    target_no_audio, _, target_audio_no_guide = _latent(37, 207)
+    dynamic = loop.MiniMaxH3LoopLatentGuide.execute(
+        positive, target_no_audio, False, 2, 41, False, source
+    )
+    dynamic_video_mask, dynamic_audio_mask = dynamic[1]["noise_mask"].unbind()
+    _, dynamic_audio = dynamic[1]["samples"].unbind()
+    assert dynamic[2] == 39
+    assert torch.allclose(
+        dynamic_video_mask[0, 0, :12, 0, 0], torch.linspace(0, 1, 12)
+    )
+    assert torch.all(dynamic_video_mask[:, :, 12:] == 1)
+    assert torch.all(dynamic_audio_mask == 1)
+    assert torch.equal(dynamic_audio, target_audio_no_guide)
 
     images = torch.arange(124 * 2 * 3 * 3, dtype=torch.float32).reshape(124, 2, 3, 3)
     waveform = torch.arange(2 * 48000, dtype=torch.float32).reshape(1, 2, 48000)

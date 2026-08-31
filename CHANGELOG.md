@@ -25,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Experimental
 
+- Add a dynamic 0→1 linear temporal noise mask to latent-loop continuation. The mask length follows the aligned overlap frames, directly places the previous sampled AV-latent tail at the next segment's opening, and progressively releases video/audio denoising toward the end of the overlap.
 - Add an opt-in `MiniMax H3 Direct Latent Guide` node for controlled continuation tests that reuse a sampled H3 video-latent tail without an RGB decode/encode round trip.
 - Add an objective video-difference node and a reproducible API workflow comparing native RGB Guide, direct latent Guide, and a single VAE round trip. Production planner, encoder, and compatibility-director behavior is unchanged.
 - Add three opt-in generic-loop helpers: segmented H3 prompt selection, direct AV-latent continuation, and decoded overlap removal.

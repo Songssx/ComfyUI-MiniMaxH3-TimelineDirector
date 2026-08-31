@@ -12,6 +12,7 @@ import math
 import torch
 import node_helpers
 from comfy.ldm.minimax.model import FRAME_PER_TOKEN
+from comfy.nested_tensor import NestedTensor
 from comfy_api.latest import io
 
 
@@ -91,6 +92,97 @@ def _build_direct_latent_keyframe(
         "video_tokens": guide_tokens,
         "audio_tokens": audio_tokens,
         "frame_idx": resolved,
+    }
+
+
+def _apply_linear_temporal_noise_mask(
+    target_latent,
+    source_latent,
+    guide_frames,
+    include_audio=False,
+):
+    """Copy the previous tail into the target and fade denoising from 0 to 1.
+
+    H3 samples video and audio as a nested latent.  The sampler interprets a
+    noise-mask value of 0 as preserved input and 1 as fully denoised.  Keep the
+    mask compact (one channel and 1x1 spatial size); ComfyUI expands it to each
+    stream's latent shape immediately before sampling.
+    """
+
+    target_video, target_audio = _h3_streams(target_latent, "target_latent")
+    source_video, source_audio = _h3_streams(source_latent, "source_latent")
+    if target_video.shape[3:] != source_video.shape[3:]:
+        raise ValueError(
+            "线性时间遮罩要求两段视频的 latent 空间尺寸一致；"
+            f"当前为 {tuple(source_video.shape[3:])} -> {tuple(target_video.shape[3:])}"
+        )
+
+    actual_frames = _valid_guide_frames(int(guide_frames))
+    video_tokens = _video_latent_t(actual_frames)
+    if video_tokens > source_video.shape[2] or video_tokens > target_video.shape[2]:
+        raise ValueError(
+            f"源或目标 latent 不足以放置 {actual_frames} 帧线性重叠区"
+            f"（需要 {video_tokens} 个视频 token）"
+        )
+
+    video = target_video.clone()
+    video_tail = source_video[:1, :, -video_tokens:, :, :].to(
+        device=video.device, dtype=video.dtype
+    )
+    video[:, :, :video_tokens, :, :] = video_tail.expand(
+        video.shape[0], -1, -1, -1, -1
+    )
+    video_mask = torch.ones(
+        (1, 1, target_video.shape[2], 1, 1),
+        dtype=torch.float32,
+        device=target_video.device,
+    )
+    video_ramp = torch.linspace(
+        0.0,
+        1.0,
+        steps=video_tokens,
+        dtype=video_mask.dtype,
+        device=video_mask.device,
+    )
+    video_mask[:, :, :video_tokens, :, :] = video_ramp.reshape(1, 1, -1, 1, 1)
+
+    audio = target_audio.clone()
+    audio_mask = torch.ones(
+        (1, 1, 1, target_audio.shape[-1]),
+        dtype=torch.float32,
+        device=target_audio.device,
+    )
+    audio_tokens = 0
+    if include_audio:
+        audio_tokens = min(
+            round(actual_frames * 40 / 24),
+            source_audio.shape[-1],
+            target_audio.shape[-1],
+        )
+        if audio_tokens < 1:
+            raise ValueError("目标或源 H3 audio latent 不足以放置线性音频重叠区")
+        audio_tail = source_audio[:1, :, :, -audio_tokens:].to(
+            device=audio.device, dtype=audio.dtype
+        )
+        audio[..., :audio_tokens] = audio_tail.expand(audio.shape[0], -1, -1, -1)
+        audio_ramp = torch.linspace(
+            0.0,
+            1.0,
+            steps=audio_tokens,
+            dtype=audio_mask.dtype,
+            device=audio_mask.device,
+        )
+        audio_mask[..., :audio_tokens] = audio_ramp.reshape(1, 1, 1, -1)
+
+    output = dict(target_latent)
+    output["samples"] = NestedTensor((video, audio))
+    output["noise_mask"] = NestedTensor((video_mask, audio_mask))
+    return output, {
+        "frames": actual_frames,
+        "video_tokens": video_tokens,
+        "audio_tokens": audio_tokens,
+        "video_mask_start": float(video_ramp[0].item()),
+        "video_mask_end": float(video_ramp[-1].item()),
     }
 
 
