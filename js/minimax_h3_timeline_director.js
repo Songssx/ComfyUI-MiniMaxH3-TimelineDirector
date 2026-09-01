@@ -16,7 +16,7 @@ function installStyles() {
       position:relative; width:100%; max-width:100%; height:auto; min-height:0; color:var(--text); background:var(--bg); border:1px solid #2b3241;
       border-radius:9px; overflow:hidden; font:12px/1.35 Inter,Segoe UI,Arial,sans-serif; user-select:none; }
     .m3td-widget-host { pointer-events:none !important; }
-    .m3td-widget-host .m3td { pointer-events:auto; }
+    .m3td-widget-host .m3td { pointer-events:auto; touch-action:none; }
     .m3td * { box-sizing:border-box; }
     .m3td button,.m3td input { font:inherit; }
     .m3td-head { display:flex; align-items:center; gap:6px; padding:8px; background:linear-gradient(180deg,#242a37,#1c222d);
@@ -43,7 +43,7 @@ function installStyles() {
       color:#f3cf92; background:#382d20; cursor:pointer; font-size:10px; }
     .m3td-audio-toggle.off { color:#c3cad5; background:#282d36; border-color:#4c5565; }
     .m3td-viewport { position:relative; overflow:auto; background:#0e1219; scrollbar-color:#49556a #171c25; }
-    .m3td-stage { position:relative; min-width:100%; height:170px; }
+    .m3td-stage { position:relative; min-width:100%; height:170px; touch-action:none; }
     .m3td-ruler { position:relative; height:26px; border-bottom:1px solid #2c3443; background:#131821; }
     .m3td-tick { position:absolute; bottom:0; width:1px; height:8px; background:#556074; color:#8490a4; }
     .m3td-tick.major { height:13px; background:#78849a; }
@@ -53,7 +53,7 @@ function installStyles() {
     .m3td-track.audio { height:50px; background-color:#111720; }
     .m3td-track.audio.muted .m3td-audio-clip { opacity:.28; filter:grayscale(1); }
     .m3td-clip { position:absolute; top:8px; height:78px; min-width:10px; overflow:hidden; border:1px solid #5688ec;
-      border-radius:5px; background:#223c6e; cursor:grab; box-shadow:0 3px 10px #0007; }
+      border-radius:5px; background:#223c6e; cursor:grab; box-shadow:0 3px 10px #0007; touch-action:none; }
     .m3td-clip.selected { border:2px solid #b9ddff; box-shadow:0 0 0 2px #328bff99,0 5px 14px #0009; }
     .m3td-clip video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.62; pointer-events:none; }
     .m3td-clip-shade { position:absolute; inset:0; background:linear-gradient(180deg,#0002,#061329cc); }
@@ -65,17 +65,20 @@ function installStyles() {
     .m3td-clip-ref.guide { top:24px; color:#78fff5; border:1px solid #43d9d177; }
     .m3td-clip-ref.edit { top:24px; color:#ffd58a; border:1px solid #f3af4e88; }
     .m3td-clip-ref.boundary { top:24px; color:#c7b7ff; border:1px solid #987cff88; }
-    .m3td-handle { position:absolute; top:0; bottom:0; width:7px; z-index:4; cursor:ew-resize; }
+    .m3td-handle { position:absolute; top:0; bottom:0; width:12px; z-index:4; cursor:ew-resize; touch-action:none; }
     .m3td-handle.left { left:0; } .m3td-handle.right { right:0; }
     .m3td-audio-clip { position:absolute; top:5px; height:40px; overflow:hidden; border:1px solid #a77636; border-radius:4px;
       background:#44351f; opacity:.92; }
     .m3td-wave { width:100%; height:100%; display:block; }
     .m3td-selection { position:absolute; top:26px; height:144px; z-index:8; border:2px solid var(--cyan);
-      background:rgba(35,211,199,.10); box-shadow:inset 0 0 25px #43d9d116; pointer-events:auto; cursor:move; }
-    .m3td-selection::before { content:"GEN"; position:absolute; top:2px; left:5px; font-size:9px; font-weight:800; color:#72fff5; }
-    .m3td-selection .m3td-sel-handle { position:absolute; top:0; bottom:0; width:9px; background:#43d9d155; cursor:ew-resize; }
-    .m3td-selection .left { left:-5px; } .m3td-selection .right { right:-5px; }
-    .m3td-playhead { position:absolute; top:0; bottom:0; width:9px; margin-left:-4px; z-index:11; cursor:ew-resize; }
+      background:rgba(35,211,199,.10); box-shadow:inset 0 0 25px #43d9d116; pointer-events:none; cursor:move; }
+    .m3td-selection .m3td-sel-move { position:absolute; top:0; left:12px; right:12px; height:18px; padding:1px 4px 0;
+      pointer-events:auto; cursor:grab; touch-action:none; font-size:9px; line-height:14px; font-weight:800; color:#72fff5;
+      background:linear-gradient(90deg,#123f43e6,#123f4366 34px,transparent 96px); border-radius:0 0 3px 3px; }
+    .m3td-selection .m3td-sel-handle { position:absolute; top:0; bottom:0; width:12px; pointer-events:auto; touch-action:none;
+      background:#43d9d166; cursor:ew-resize; }
+    .m3td-selection .left { left:0; } .m3td-selection .right { right:0; }
+    .m3td-playhead { position:absolute; top:0; bottom:0; width:9px; margin-left:-4px; z-index:11; cursor:ew-resize; touch-action:none; }
     .m3td-playhead::before { content:""; position:absolute; left:0; top:0; border-left:4px solid transparent;
       border-right:4px solid transparent; border-top:7px solid #ff737d; }
     .m3td-playhead::after { content:""; position:absolute; left:4px; top:0; bottom:0; width:1px; background:#ff737d; }
@@ -256,6 +259,7 @@ class TimelineDirectorUI {
     this.uploading = false;
     this.proxyRequests = new Map();
     this.previewRAF = 0;
+    this.dragRAF = 0;
     this.layoutRAF = 0;
     this.previewClipId = null;
     this.segmentCountDraft = this.state.segmentConfig.count;
@@ -512,10 +516,38 @@ class TimelineDirectorUI {
     });
     startInput.onchange = durInput.onchange = () => this.render();
     zoomInput.oninput = () => { this.zoom = num(zoomInput.value, 64); this.renderTimeline(); };
-    this.viewport.addEventListener("pointerdown", e => {
-      if (e.target.closest(".m3td-clip,.m3td-selection,.m3td-playhead")) return;
+    this.timelinePointerDown = e => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const target = e.target instanceof Element ? e.target : null;
+      const clipElement = target?.closest(".m3td-clip");
+      if (clipElement && this.stage.contains(clipElement)) {
+        const clip = this.state.videoClips.find(item => String(item.id) === clipElement.dataset.id);
+        this.beginClipDrag(e, clip, target?.closest("[data-edge]")?.dataset.edge || "move");
+        return;
+      }
+      const selectionPart = target?.closest(".m3td-selection [data-edge]");
+      if (selectionPart && this.stage.contains(selectionPart)) {
+        this.beginSelectionDrag(e, selectionPart.dataset.edge || "move");
+        return;
+      }
+      if (target?.closest(".m3td-playhead")) {
+        this.beginPlayheadDrag(e);
+        return;
+      }
+      const stageRect = this.stage.getBoundingClientRect();
+      const stageScale = stageRect.width / Math.max(1, this.stage.offsetWidth);
+      const localY = (e.clientY - stageRect.top) / Math.max(.0001, stageScale);
+      const time = this.timeFromClientX(e.clientX);
+      const selection = this.state.selection;
+      if (localY >= 26 && localY <= 170 && time >= selection.start && time <= selection.start + selection.duration) {
+        this.beginSelectionDrag(e, "move");
+        return;
+      }
       this.beginPlayheadDrag(e);
-    });
+    };
+    // Nodes 2.0 wraps DOM widgets with its own canvas gestures. Capture the
+    // press on the timeline so the editing gesture cannot be swallowed.
+    this.stage.addEventListener("pointerdown", this.timelinePointerDown, true);
     this.viewport.addEventListener("dblclick", e => {
       if (e.target.closest(".m3td-clip")) return;
       this.fitSelectionToGapAt(this.timeFromClientX(e.clientX));
@@ -600,10 +632,24 @@ class TimelineDirectorUI {
     this.layoutRAF = requestAnimationFrame(() => {
       const desiredHeight = this.requiredDirectorHeight();
       if (this.directorWidget) this.directorWidget.__m3tdHeight = desiredHeight;
+      const widgetHost = this.root.closest?.(".dom-widget") || this.root.parentElement;
+      if (widgetHost) {
+        widgetHost.classList.add("m3td-widget-host");
+        widgetHost.style.setProperty("height", `${desiredHeight}px`, "important");
+        widgetHost.style.setProperty("min-height", `${desiredHeight}px`, "important");
+        widgetHost.style.setProperty("max-height", "none", "important");
+        widgetHost.style.setProperty("overflow", "visible", "important");
+      }
       const computed = this.node.computeSize?.();
       const currentWidth = this.node.size?.[0] || computed?.[0] || 860;
       const currentHeight = this.node.size?.[1] || 0;
-      const minimumHeight = Math.ceil(computed?.[1] || desiredHeight);
+      const computedHeight = Number(computed?.[1]) || 0;
+      const chromeCandidate = computedHeight - desiredHeight;
+      if (chromeCandidate >= 36 && chromeCandidate <= 600) {
+        this.node.__m3tdChromeHeight = chromeCandidate;
+      }
+      const chromeHeight = Number(this.node.__m3tdChromeHeight) || 120;
+      const minimumHeight = Math.ceil(Math.max(computedHeight, desiredHeight + chromeHeight));
       if (Math.abs(currentHeight - minimumHeight) > 1) {
         this.node.setSize?.([currentWidth, minimumHeight]);
       }
@@ -628,19 +674,15 @@ class TimelineDirectorUI {
     for (const clip of this.state.videoClips) if (clip.hasAudio) html += this.audioClipHTML(clip);
     html += '</div>';
     const sel = this.state.selection;
-    html += `<div class="m3td-selection" data-role="selection" style="left:${sel.start*this.zoom}px;width:${Math.max(8,sel.duration*this.zoom)}px"><i class="m3td-sel-handle left" data-edge="left"></i><i class="m3td-sel-handle right" data-edge="right"></i></div>`;
-    if (this.snapGuide != null) html += `<div class="m3td-snap-guide" style="left:${this.snapGuide*this.zoom}px"></div>`;
+    html += `<div class="m3td-selection" data-role="selection" style="left:${sel.start*this.zoom}px;width:${Math.max(8,sel.duration*this.zoom)}px"><b class="m3td-sel-move" data-edge="move" title="拖动生成区域">GEN</b><i class="m3td-sel-handle left" data-edge="left" title="调整生成区域起点"></i><i class="m3td-sel-handle right" data-edge="right" title="调整生成区域终点"></i></div>`;
+    html += `<div class="m3td-snap-guide" style="left:${(this.snapGuide ?? 0)*this.zoom}px;${this.snapGuide == null ? "display:none" : ""}"></div>`;
     html += `<div class="m3td-playhead" data-role="playhead" title="拖动播放头" style="left:${this.playhead*this.zoom}px"></div>`;
     this.stage.innerHTML = html;
     for (const el of this.stage.querySelectorAll(".m3td-clip")) {
       const clip = this.state.videoClips.find(c => c.id === el.dataset.id);
-      el.onpointerdown = e => this.beginClipDrag(e, clip, e.target.dataset.edge || "move");
       const video = el.querySelector("video");
       if (video && clip) video.addEventListener("loadedmetadata", () => { try { video.currentTime = Math.min(clip.trimStart + .05, Math.max(0, video.duration-.05)); } catch (_) {} }, {once:true});
     }
-    const selection = this.stage.querySelector(".m3td-selection");
-    selection.onpointerdown = e => this.beginSelectionDrag(e, e.target.dataset.edge || "move");
-    this.stage.querySelector(".m3td-playhead").onpointerdown = e => this.beginPlayheadDrag(e);
     this.drawWaveforms();
     this.schedulePreviewUpdate();
   }
@@ -797,42 +839,121 @@ class TimelineDirectorUI {
       this.playhead = clamp(clip.start + this.previewVideo.currentTime - clip.trimStart, clip.start, clip.start + clip.duration);
     }
     this.previewTime.textContent = `${this.formatPreviewTime(this.playhead)}  ·  源 ${this.formatPreviewTime(this.previewVideo.currentTime)}`;
-    this.renderTimeline();
+    this.scheduleDragVisualUpdate();
   }
 
   beginClipDrag(event, clip, mode) {
     if (!clip) return;
-    event.preventDefault(); event.stopPropagation();
+    this.preparePointerDrag(event);
+    this.previewVideo.pause();
     this.selectedId = clip.id;
     const rect = this.stage.getBoundingClientRect();
     const canvasScale = rect.width / Math.max(1, this.stage.offsetWidth);
     this.drag = { kind:"clip", mode, x:event.clientX, scale:canvasScale, start:clip.start, duration:clip.duration, trimStart:clip.trimStart, clip };
-    this.render();
+    for (const element of this.stage.querySelectorAll(".m3td-clip")) {
+      element.classList.toggle("selected", element.dataset.id === clip.id);
+    }
+    this.renderInspector();
+    this.scheduleNodeHeightSync();
   }
 
   beginSelectionDrag(event, mode) {
-    event.preventDefault(); event.stopPropagation();
+    this.preparePointerDrag(event);
+    this.previewVideo.pause();
     const rect = this.stage.getBoundingClientRect();
     const canvasScale = rect.width / Math.max(1, this.stage.offsetWidth);
     this.drag = { kind:"selection", mode, x:event.clientX, scale:canvasScale, start:this.state.selection.start, duration:this.state.selection.duration };
   }
 
   beginPlayheadDrag(event) {
-    event.preventDefault(); event.stopPropagation();
+    this.preparePointerDrag(event);
     this.previewVideo.pause();
     const snapped = this.snapValue(this.timeFromClientX(event.clientX), this.snapPoints(null, true));
     this.playhead = snapped.value;
     this.snapGuide = snapped.snapAt;
     this.drag = {kind:"playhead"};
-    this.renderTimeline();
+    this.scheduleDragVisualUpdate();
+  }
+
+  selectHostNode() {
+    const canvas = app.canvas;
+    try {
+      if (typeof canvas?.selectNode === "function") canvas.selectNode(this.node, false);
+      else if (typeof canvas?.selectNodes === "function") canvas.selectNodes([this.node]);
+    } catch (_) { /* Selection must never block timeline editing. */ }
+    canvas?.setDirty?.(true, true);
+    this.node.setDirtyCanvas?.(true, true);
+  }
+
+  preparePointerDrag(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectHostNode();
+    this.dragPointerId = event.pointerId;
+    try { this.stage.setPointerCapture?.(event.pointerId); } catch (_) {}
+  }
+
+  scheduleDragVisualUpdate() {
+    if (this.dragRAF) return;
+    this.dragRAF = requestAnimationFrame(() => {
+      this.dragRAF = 0;
+      this.updateDragVisuals();
+    });
+  }
+
+  updateDragVisuals() {
+    const selection = this.stage.querySelector(".m3td-selection");
+    if (selection) {
+      selection.style.left = `${this.state.selection.start * this.zoom}px`;
+      selection.style.width = `${Math.max(8, this.state.selection.duration * this.zoom)}px`;
+    }
+    const playhead = this.stage.querySelector(".m3td-playhead");
+    if (playhead) playhead.style.left = `${this.playhead * this.zoom}px`;
+    const snap = this.stage.querySelector(".m3td-snap-guide");
+    if (snap) {
+      snap.style.display = this.snapGuide == null ? "none" : "block";
+      if (this.snapGuide != null) snap.style.left = `${this.snapGuide * this.zoom}px`;
+    }
+    const startInput = this.root.querySelector('[data-field="selectionStart"]');
+    const durationInput = this.root.querySelector('[data-field="selectionDuration"]');
+    if (startInput) startInput.value = this.state.selection.start.toFixed(2);
+    if (durationInput) durationInput.value = this.state.selection.duration.toFixed(2);
+
+    const clip = this.drag?.kind === "clip" ? this.drag.clip : null;
+    if (clip) {
+      const clipElement = Array.from(this.stage.querySelectorAll(".m3td-clip"))
+        .find(element => element.dataset.id === String(clip.id));
+      if (clipElement) {
+        clipElement.style.left = `${clip.start * this.zoom}px`;
+        clipElement.style.width = `${Math.max(10, clip.duration * this.zoom)}px`;
+        const meta = clipElement.querySelector(".m3td-clip-meta");
+        if (meta) meta.textContent = `${clip.duration.toFixed(2)}s · 源 ${clip.trimStart.toFixed(2)}s`;
+      }
+      const wave = Array.from(this.stage.querySelectorAll("canvas[data-wave]"))
+        .find(element => element.dataset.wave === String(clip.id));
+      const audioElement = wave?.closest(".m3td-audio-clip");
+      if (audioElement) {
+        audioElement.style.left = `${clip.start * this.zoom}px`;
+        audioElement.style.width = `${Math.max(10, clip.duration * this.zoom)}px`;
+      }
+      for (const input of this.inspector.querySelectorAll("input[data-edit]")) {
+        if (input.dataset.edit === "start") input.value = clip.start.toFixed(2);
+        if (input.dataset.edit === "trimStart") input.value = clip.trimStart.toFixed(2);
+        if (input.dataset.edit === "duration") input.value = clip.duration.toFixed(2);
+      }
+    }
+    if (this.drag?.kind === "playhead") this.schedulePreviewUpdate();
   }
 
   attachGlobalPointerHandlers() {
     this.pointerMove = e => {
       if (!this.drag) return;
+      if (this.dragPointerId != null && e.pointerId !== this.dragPointerId) return;
+      e.preventDefault();
+      e.stopPropagation();
       if (this.drag.kind === "playhead") {
         const snapped = this.snapValue(this.timeFromClientX(e.clientX), this.snapPoints(null, true));
-        this.playhead = snapped.value; this.snapGuide = snapped.snapAt; this.renderTimeline(); return;
+        this.playhead = snapped.value; this.snapGuide = snapped.snapAt; this.scheduleDragVisualUpdate(); return;
       }
       const delta = (e.clientX - this.drag.x) / (this.zoom * (this.drag.scale || 1));
       if (this.drag.kind === "selection") {
@@ -872,11 +993,29 @@ class TimelineDirectorUI {
           clip.duration = clamp(snapped.value - this.drag.start, 5/24, available); this.snapGuide = snapped.snapAt;
         }
       }
-      this.sync(); this.render();
+      this.scheduleDragVisualUpdate();
     };
-    this.pointerUp = () => { if (this.drag) { this.drag = null; this.snapGuide = null; this.sync(); this.render(); } };
-    window.addEventListener("pointermove", this.pointerMove);
-    window.addEventListener("pointerup", this.pointerUp);
+    this.pointerUp = e => {
+      if (!this.drag) return;
+      if (this.dragPointerId != null && e?.pointerId != null && e.pointerId !== this.dragPointerId) return;
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (this.dragRAF) {
+        cancelAnimationFrame(this.dragRAF);
+        this.dragRAF = 0;
+        this.updateDragVisuals();
+      }
+      this.drag = null;
+      const pointerId = this.dragPointerId;
+      this.dragPointerId = null;
+      try { if (pointerId != null && this.stage.hasPointerCapture?.(pointerId)) this.stage.releasePointerCapture(pointerId); } catch (_) {}
+      this.snapGuide = null;
+      this.sync();
+      this.render();
+    };
+    window.addEventListener("pointermove", this.pointerMove, true);
+    window.addEventListener("pointerup", this.pointerUp, true);
+    window.addEventListener("pointercancel", this.pointerUp, true);
   }
 
   renderInspector() {
@@ -986,8 +1125,8 @@ class TimelineDirectorUI {
     list.innerHTML=this.state.segmentConfig.segments.map((segment,index)=>`<section class="m3td-segment" data-segment="${index}">
       <div class="m3td-segment-title"><strong>第 ${index+1} 段</strong><span>匹配提示词序号 ${index+1} · 本段编号从 1 开始</span></div>
       <div class="m3td-segment-bins">
-        <div class="m3td-segment-bin" data-segment-drop="images" data-segment-index="${index}"><label>参考图片（拖入此处）</label>${segment.images.map((id,i)=>this.segmentAssetHTML("images",id,i,index)).join("")}</div>
-        <div class="m3td-segment-bin" data-segment-drop="audios" data-segment-index="${index}"><label>参考音频（拖入此处）</label>${segment.audios.map((id,i)=>this.segmentAssetHTML("audios",id,i,index)).join("")}</div>
+        <div class="m3td-segment-bin" data-segment-drop="images" data-segment-index="${index}"><label class="m3td-segment-bin-label">参考图片（拖入此处）</label><div class="m3td-segment-bin-list">${segment.images.map((id,i)=>this.segmentAssetHTML("images",id,i,index)).join("")}</div></div>
+        <div class="m3td-segment-bin" data-segment-drop="audios" data-segment-index="${index}"><label class="m3td-segment-bin-label">参考音频（拖入此处）</label><div class="m3td-segment-bin-list">${segment.audios.map((id,i)=>this.segmentAssetHTML("audios",id,i,index)).join("")}</div></div>
       </div></section>`).join("");
     for(const button of list.querySelectorAll("[data-remove-segment-asset]"))button.onclick=event=>{
       event.stopPropagation();
@@ -1100,7 +1239,8 @@ class TimelineDirectorUI {
 
   reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.segmentCountDraft=this.state.segmentConfig.count;this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
   destroy() {
-    cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.layoutRAF);this.contentResizeObserver?.disconnect();this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove);window.removeEventListener("pointerup",this.pointerUp);
+    cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.dragRAF);cancelAnimationFrame(this.layoutRAF);this.contentResizeObserver?.disconnect();this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove,true);window.removeEventListener("pointerup",this.pointerUp,true);window.removeEventListener("pointercancel",this.pointerUp,true);
+    this.stage?.removeEventListener("pointerdown",this.timelinePointerDown,true);
     this.root.removeEventListener("wheel",this.forwardWheel);
     if(this.externalDropHandlers){
       this.root.removeEventListener("dragenter",this.externalDropHandlers.showDropTarget,true);

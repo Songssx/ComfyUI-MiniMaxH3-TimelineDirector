@@ -4,14 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project is released under GPL-3.0.
 
-## [Unreleased]
+## [0.6.0] - 2026-09-01
 
 ### Added
 
-- Add optional `提示词序号` input to the material planner for Loop-driven, per-segment image/audio selection.
+- Add optional `提示词序号` input to the material planner for per-segment image/audio selection.
 - Add an explicit segment-count setup flow and drag-and-drop per-segment material boards; Picture/Audio ordinals restart from 1 inside every segment.
-- Add `MiniMax时间线循环工作流.json`, wiring the loop prompt ordinal to the planner's new optional input.
-- Add the complete `MiniMax时间线循环长视频分段生成工作流.json`, its compressed README preview, and an updated Chinese Agent specification for writing parseable loop-segment prompts.
+- Add a Chinese Agent specification for writing parseable finite-segment prompts.
 
 ### Compatibility
 
@@ -19,18 +18,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Fixed
 
+- Restore full timeline editing under Nodes 2.0: timeline presses are captured before canvas gestures, active pointers remain captured outside the node, video clips explicitly select their host node, and the cyan generation range now has a full-width move rail plus in-bounds resize handles.
+- Allow an empty material plan to run as native MiniMax H3 text-to-video instead of raising “no reference materials”. Empty plans now tokenize only the prompt, create the normal empty AV latent, and skip the Guide dependency entirely.
+- Keep timeline dragging and preview playback responsive in Nodes 2.0 by updating only the active clip, generation range, playhead, snap guide, and paired audio geometry during animation frames; the expensive timeline/media DOM rebuild now happens once after drag release.
+- Stop the cyan generation-range overlay from stealing pointer input from overlapping video clips. Video bodies and trim handles remain directly draggable, while the `GEN` grip, cyan edge handles, and empty cyan area move or resize the generation range.
 - Remove stale invisible DOM hit areas after node resizing or segment-panel contraction: the director now measures natural content height, shrinks as well as grows, and leaves unused DOM-widget space transparent to ComfyUI canvas pointer events.
 - Keep the hidden `timeline_data` multiline widget hidden after ComfyUI recreates or resets its DOM wrapper during resize/configure. Its real `.dom-widget` host is now collapsed to zero and cannot intercept canvas drags.
 - Allow independent image/audio cards to be copied into per-prompt segment bins while retaining move-based reordering inside the source library. This fixes drag-over highlighting followed by a cancelled drop.
+- Lay out multiple image/audio cards horizontally inside each per-prompt segment bin.
+- Keep the custom director DOM host at its measured content height and retain a stable node-chrome allowance, preventing Nodes 2.0 from shrinking the node to half-height after selection or resize.
+
+### Changed
+
+- Split the finite long-video path into a pure `MiniMax H3 有限分段展开` planning node and a separate `MiniMax H3 有限分段采样` graph-expansion node. Sampler, scheduler, model, CLIP, and VAEs are no longer inputs of the planning node.
+
+### Removed
+
+- Remove the old generic-loop helper nodes, Loop-dependent workflows/tests/docs, and the ComfyUI PR #15923 runtime dependency.
 
 ### Experimental
 
+- Add plugin-owned finite planning and sampling for known segment counts. It performs per-segment selection/encoding/sampling, direct AV-latent continuation, linear temporal masking, overlap removal, and ordered image/audio assembly.
+- Add `MiniMax时间线插件内置有限分段工作流.json`, using standard sampler/scheduler/video nodes around the two finite nodes.
+- Verify the finite path end to end at 512x288: two 56-frame segments with a 22-frame overlap produced exactly 90 frames at 24 fps with audio.
 - Add a dynamic 0→1 linear temporal noise mask to latent-loop continuation. The mask length follows the aligned overlap frames, directly places the previous sampled AV-latent tail at the next segment's opening, and progressively releases video/audio denoising toward the end of the overlap.
 - Add an opt-in `MiniMax H3 Direct Latent Guide` node for controlled continuation tests that reuse a sampled H3 video-latent tail without an RGB decode/encode round trip.
 - Add an objective video-difference node and a reproducible API workflow comparing native RGB Guide, direct latent Guide, and a single VAE round trip. Production planner, encoder, and compatibility-director behavior is unchanged.
-- Add three opt-in generic-loop helpers: segmented H3 prompt selection, direct AV-latent continuation, and decoded overlap removal.
-- Add a reproducible three-segment API workflow that uses ComfyUI PR #15923 `Loop` / `Loop Variable`, carries the previous sampled AV latent into the next iteration, and incrementally encodes the deduplicated final video.
-- Verify a real three-iteration 640x352 H3 run: 124 source frames plus two 102-frame deduplicated continuations produced exactly 328 frames with a synchronized audio stream.
 
 ## [0.4.1] - 2026-08-27
 

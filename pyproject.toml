@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-minimax-h3-timeline-director"
-version = "0.5.0.dev0"
+version = "0.6.0"
 description = "Editable reference media timeline for ComfyUI MiniMax H3 Reference to Video"
 readme = "README.md"
 license = {file = "LICENSE"}

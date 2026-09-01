@@ -10,10 +10,11 @@ from .experimental_latent_guide import (
     MiniMaxH3AddLatentGuide,
     MiniMaxH3VisualDifferenceMetrics,
 )
-from .minimax_h3_loop import (
-    MiniMaxH3LoopLatentGuide,
-    MiniMaxH3LoopPromptSelector,
-    MiniMaxH3LoopSegmentFinalize,
+from .minimax_h3_finite_segments import (
+    MiniMaxH3FiniteLatentContinuation,
+    MiniMaxH3FiniteSegmentExpansion,
+    MiniMaxH3FiniteSegmentFinalize,
+    MiniMaxH3FiniteSegmentSampler,
 )
 
 NODE_CLASS_MAPPINGS = {
@@ -23,9 +24,10 @@ NODE_CLASS_MAPPINGS = {
     "MiniMaxH3OmniPromptBridge": MiniMaxH3OmniPromptBridge,
     "MiniMaxH3AddLatentGuide": MiniMaxH3AddLatentGuide,
     "MiniMaxH3VisualDifferenceMetrics": MiniMaxH3VisualDifferenceMetrics,
-    "MiniMaxH3LoopPromptSelector": MiniMaxH3LoopPromptSelector,
-    "MiniMaxH3LoopLatentGuide": MiniMaxH3LoopLatentGuide,
-    "MiniMaxH3LoopSegmentFinalize": MiniMaxH3LoopSegmentFinalize,
+    "MiniMaxH3FiniteSegmentExpansion": MiniMaxH3FiniteSegmentExpansion,
+    "MiniMaxH3FiniteSegmentSampler": MiniMaxH3FiniteSegmentSampler,
+    "MiniMaxH3FiniteLatentContinuation": MiniMaxH3FiniteLatentContinuation,
+    "MiniMaxH3FiniteSegmentFinalize": MiniMaxH3FiniteSegmentFinalize,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -35,9 +37,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MiniMaxH3OmniPromptBridge": "MiniMax H3 Omni 素材包提示词桥",
     "MiniMaxH3AddLatentGuide": "MiniMax H3 直接 Latent Guide（实验）",
     "MiniMaxH3VisualDifferenceMetrics": "MiniMax H3 视频差异指标（实验）",
-    "MiniMaxH3LoopPromptSelector": "MiniMax H3 循环分段提示词",
-    "MiniMaxH3LoopLatentGuide": "MiniMax H3 Latent 循环续段",
-    "MiniMaxH3LoopSegmentFinalize": "MiniMax H3 循环片段去重",
+    "MiniMaxH3FiniteSegmentExpansion": "MiniMax H3 有限分段展开",
+    "MiniMaxH3FiniteSegmentSampler": "MiniMax H3 有限分段采样",
+    "MiniMaxH3FiniteLatentContinuation": "MiniMax H3 有限分段 Latent 续接（内部）",
+    "MiniMaxH3FiniteSegmentFinalize": "MiniMax H3 有限分段去重（内部）",
 }
 
 WEB_DIRECTORY = "./js"

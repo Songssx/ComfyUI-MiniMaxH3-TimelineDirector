@@ -1,5 +1,29 @@
 # ComfyUI MiniMax H3 时间线导演台
 
+简体中文 · [English](README.md)
+
+## 核心能力：轻量级无限时长视频生成
+
+插件可以把任意目标时长拆成多个连续片段，在一次 ComfyUI 执行中自动完成逐段生成、
+上一段 AV Latent 尾部续接、`0→1` 线性时间遮罩、重叠帧去除以及最终音画合并。
+只需增加分段数量即可继续延长视频，不依赖已被关闭的通用 Loop PR，也不需要在画布上
+手工复制多套采样节点。实际可生成长度只受本机显存、内存、磁盘空间及 ComfyUI 单次执行能力限制。
+
+[下载无限时长视频工作流](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
+[使用说明](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
+[分段提示词 Agent 规范](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
+
+[![轻量级无限时长工作流](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/infinite-workflow.webp)](example_workflows/MiniMax时间线插件内置有限分段工作流.json)
+
+### 约一分钟直接生成案例
+
+下面两段均为插件一次执行直接生成的 `52.625 秒 / 1263 帧 / 24fps` 成片。点击缩略图播放或下载原始 MP4；
+视频和缩略图存放在 GitHub Release，不会增加插件克隆与安装体积。
+
+| 案例一：有限分段 Latent 续写 | 案例二：参考素材 + 48 帧重叠续写 |
+| --- | --- |
+| [![播放案例一](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/case-finite-segments-60s.webp)](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/H3_finite_segments_60s.mp4) | [![播放案例二](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/case-reference-overlap-60s.webp)](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/H3_reference_overlap48_60s.mp4) |
+
 <p align="center">
   <img src="docs/images/creator-wecom.webp" alt="创作者企业微信联系卡片" width="360">
 </p>
@@ -11,10 +35,6 @@
   <a href="https://www.youtube.com/@shixiongsong">YouTube</a>
 </p>
 
-简体中文 · [English](README.md)
-
-> **实验分支测试版 `0.5.0.dev0`：** 本分支包含通用 Loop、直接 Latent 续段、按提示词序号分段选材等长视频实验功能。稳定正式版仍位于 `main`。
-
 一个为 ComfyUI 原生 **MiniMax H3 Reference to Video** 工作流设计的可视化参考素材时间线。它将参考视频、视频原声、固定 Guide、独立图片和独立音频集中到一个类似剪辑软件的界面中。
 
 > 视频生成 Agent 请阅读：[长视频分段生成 Agent 操作规范](docs/AGENT_LONG_VIDEO_GUIDE_CN.md)
@@ -24,6 +44,7 @@
 - 多视频时间线：移动、裁剪、分段、删除、吸附和精确数值定位。
 - 青色生成选区：只有与选区重叠的素材区间参与本次视频参考或 Guide。
 - 三种视频用途：`固定Guide`、`可编辑参考`、`仅固定边界`。
+- 纯文生视频：不上传任何图片、视频或音频时，规划编码器直接按提示词创建标准 H3 空 AV latent。
 - 原声同步：视频移动和裁剪时原声保持绑定，也可关闭视频原声参考。
 - 低清预览：最高 `480×270 / 12fps` 无声代理，红色播放头可拖动预览。
 - 独立素材箱：图片和音频支持多选、外部拖入、删除及拖拽排序。
@@ -32,13 +53,15 @@
 - 音频输出：可分别输出时间线视频原声合并结果和独立参考音频合并结果。
 - 状态保存：时间线编辑状态会写入 ComfyUI 工作流 JSON。
 
-## 四个核心节点
+## 六个核心节点
 
 | 节点 | 用途 |
 | --- | --- |
 | **MiniMax H3 素材规划台** | 编辑素材并输出紧凑的 `素材规划` 与 `Omni素材包`。 |
 | **MiniMax H3 Omni 素材包提示词桥** | 将规划台素材送入已安装的 Prompt Rewriter Omni，并只输出 `rewritten_prompt`。 |
 | **MiniMax H3 规划编码器** | 接收规划、提示词、CLIP 和 VAE，生成 H3 `positive` 与 `Latent`。 |
+| **MiniMax H3 有限分段展开** | 按提示词和素材序号生成轻量级长视频分段规划，不包含采样。 |
+| **MiniMax H3 有限分段采样** | 展开普通无环执行图，完成直接 Latent 续写、时间遮罩、采样、去重和合并。 |
 | **MiniMax H3 时间线导演台（兼容）** | 保留原先的一体化工作流和旧工作流兼容性。 |
 
 拆分节点可以避免“素材输出连接到前置提示词重写器，再返回同一编码节点”产生的循环：
@@ -59,7 +82,7 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 ### 环境要求
 
-- 较新的 ComfyUI，包含原生 MiniMax H3 节点及 `MiniMaxH3AddGuide`。
+- 较新的 ComfyUI，包含原生 MiniMax H3 节点；使用固定 Guide 时还需 `MiniMaxH3AddGuide`。
 - MiniMax H3 Ref2VA 对应模型、CLIP、视频 VAE 和音频 VAE。
 - Python 3.10 或更高版本。
 - 低清代理依赖 ComfyUI 环境中的 `imageio-ffmpeg`。
@@ -94,17 +117,15 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 > 使用这个提示词生成工作流前，必须安装 [MiniMax-H3-Prompt-Rewriter-ComfyUI](https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI)。模型、量化方式及显存要求请参考该项目说明。
 
-### 4. Loop 循环长视频分段生成（实验）
+### 4. 插件内置无限时长视频生成
 
-该工作流使用 ComfyUI 通用 `Loop`，按循环序号选择本段提示词和素材；把上一段采样完成的 H3 视频/音频 Latent 尾部直接作为下一段 Guide，并在合并输出前删除重复的重叠画面和对应音频。素材规划台可为每一段分别安排参考图片与参考音频，每段编号均从 `<Picture 1>`、`<Audio 1>` 重新开始。
+`MiniMax H3 有限分段展开`只解析提示词、校验段数并生成规划，不含采样。将其输出连接到
+`MiniMax H3 有限分段采样`后，插件会生成普通无环执行图，完成逐段选材、直接 AV Latent
+续接、线性时间遮罩、重叠去除和顺序合并；不依赖 ComfyUI 的通用 Loop 节点。
 
-[下载长视频循环工作流](example_workflows/MiniMax时间线循环长视频分段生成工作流.json)
-
-[循环分段提示词 Agent 规范](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
-
-![Loop 循环长视频分段生成工作流](docs/images/workflow-long-video-loop.jpg)
-
-> 当前工作流依赖 [ComfyUI 通用循环 PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923) 对应的 Loop 节点实现，属于实验测试功能。运行前请核对分段数、每段帧数、FPS 与 `overlap_frames`。
+[下载有限分段工作流](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
+[使用说明](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
+[分段提示词 Agent 规范](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
 
 ## 基本使用方法
 
@@ -124,15 +145,11 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 推荐分段生成并保留短重叠区：下一段使用上一段末尾镜头作为开头 Guide，提示词中的 `Shot 1` 必须先描述这段重叠参考，再描述新内容。合并时删除后一段重复的固定 Guide 区域。完整规则见 [Agent 操作规范](docs/AGENT_LONG_VIDEO_GUIDE_CN.md)。
 
-### 实验：直接 Latent 循环续写
+### 有限分段直接 Latent 续写
 
-插件另含三个实验节点，可配合 ComfyUI 的通用循环，把上一段采样完成的 H3 视频+音频 latent 尾部直接反馈到下一段，避开 `RGB Decode → VAE Encode` 往返：
-
-- **MiniMax H3 循环分段提示词**：按 `iteration` 选择本轮提示词，并从第二轮起自动在 `[Shot 1]` 后补充固定重叠区说明。
-- **MiniMax H3 Latent 循环续段**：第一轮原样通过；后续轮把上一轮 AV latent 尾部固定到本轮第 0 帧。
-- **MiniMax H3 循环片段去重**：完整 latent 反馈给 `Loop Variable`，但从第二段成片中删除重复画面及等时长音频。
-
-此功能当前依赖尚未合入正式版的 [ComfyUI 通用循环 PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923)。连接方法和已验证参数见 [Latent 循环长视频说明](docs/LATENT_LOOP_LONG_VIDEO_CN.md)，Agent 写词必须遵循 [循环分段提示词 Agent 规范](docs/MiniMax_H3_循环分段提示词_Agent规范.md)。可复现实验位于 `tests/experiments/run_minimax_h3_latent_loop.py`。
+有限分段采样会把上一段 sampled AV Latent 的尾部直接放到下一段开头，避开
+`RGB Decode → VAE Encode` 往返，并按重叠帧生成 `0→1` 线性时间噪声遮罩。旧的
+`循环分段提示词`、`Latent 循环续段`、`循环片段去重`以及对 PR #15923 的依赖已经移除。
 
 ## 致谢与参考
 

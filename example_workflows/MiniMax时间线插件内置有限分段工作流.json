@@ -1,0 +1,688 @@
+{
+  "id": "b641c11e-2721-4c2a-9d83-fb32b522431c",
+  "revision": 1,
+  "last_node_id": 30,
+  "last_link_id": 13,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        2179.2808722705313,
+        -2150.8913752174717
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "minimax_h3_ref2va_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "minimax_h3_ref2va_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 2,
+      "type": "CLIPLoader",
+      "pos": [
+        2179.2808722705313,
+        -1938.8913752174687
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "type": "minimax",
+        "device": "default"
+      }
+    },
+    {
+      "id": 3,
+      "type": "VAELoader",
+      "pos": [
+        2179.2808722705313,
+        -1702.8913752174687
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      }
+    },
+    {
+      "id": 4,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        2652.1978693939213,
+        -2147.428348189183
+      ],
+      "size": [
+        402.6154572435339,
+        82
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            2,
+            3
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors",
+        1
+      ],
+      "widgets_values_named": {
+        "lora_name": "minimax_h3_fl2v_lightx2v_turbo_4step_v1.0_768p_resized_avg_rank_31_bf16.safetensors",
+        "strength_model": 1
+      }
+    },
+    {
+      "id": 8,
+      "type": "VAELoader",
+      "pos": [
+        2179.2808722705313,
+        -1514.8913752174687
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      }
+    },
+    {
+      "id": 9,
+      "type": "BasicScheduler",
+      "pos": [
+        3371.5341388894376,
+        -2131.5254281891835
+      ],
+      "size": [
+        329.3279677142127,
+        106
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BasicScheduler"
+      },
+      "widgets_values": [
+        "simple",
+        8,
+        1
+      ],
+      "widgets_values_named": {
+        "scheduler": "simple",
+        "steps": 8,
+        "denoise": 1
+      }
+    },
+    {
+      "id": 11,
+      "type": "MiniMaxH3TimelinePlanner",
+      "pos": [
+        2636.862001144766,
+        -1356.714364813552
+      ],
+      "size": [
+        1044.162603418837,
+        813
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt_index",
+          "shape": 7,
+          "type": "INT",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "素材规划参数",
+          "type": "MINIMAX_H3_TIMELINE_PLAN",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "Omni素材包",
+          "type": "MINIMAX_H3_OMNI_MEDIA_BUNDLE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3TimelinePlanner"
+      },
+      "widgets_values": [
+        640,
+        384,
+        8,
+        "{\"version\":4,\"fps\":24,\"selection\":{\"start\":0,\"duration\":8},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[{\"id\":\"mtgtw82n-8jowh4\",\"file\":\"minimax_h3_timeline_director/1788155968848_trq9t_ChatGPT_Image_2026年8月31日_13_59_17_(1).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_17 (1).png\",\"width\":1672,\"height\":941},{\"id\":\"mtgtw85x-w8ovxs\",\"file\":\"minimax_h3_timeline_director/1788155969034_hgd9j_ChatGPT_Image_2026年8月31日_13_59_18_(3).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_18 (3).png\",\"width\":1672,\"height\":941},{\"id\":\"mtgtw83t-i5mygx\",\"file\":\"minimax_h3_timeline_director/1788155968992_oae8e_ChatGPT_Image_2026年8月31日_13_59_18_(2).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_18 (2).png\",\"width\":1672,\"height\":941}],\"audios\":[{\"id\":\"mtcjg4fj-n4ukyh\",\"file\":\"minimax_h3_timeline_director/1787896556761_krhgv_女生.mp3\",\"name\":\"女生.mp3\",\"duration\":11.352,\"trimStart\":0},{\"id\":\"mtcjg5ts-5cv978\",\"file\":\"minimax_h3_timeline_director/1787896558683_hbkaq_小猪.mp3\",\"name\":\"小猪.mp3\",\"duration\":11.568,\"trimStart\":0},{\"id\":\"mtcjg7h3-42719m\",\"file\":\"minimax_h3_timeline_director/1787896560805_va70v_小巫师.mp3\",\"name\":\"小巫师.mp3\",\"duration\":13.824,\"trimStart\":0}],\"segmentConfig\":{\"count\":0,\"segments\":[]}}",
+        ""
+      ],
+      "widgets_values_named": {
+        "width": 640,
+        "height": 384,
+        "generation_seconds": 8,
+        "timeline_data": "{\"version\":4,\"fps\":24,\"selection\":{\"start\":0,\"duration\":8},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[{\"id\":\"mtgtw82n-8jowh4\",\"file\":\"minimax_h3_timeline_director/1788155968848_trq9t_ChatGPT_Image_2026年8月31日_13_59_17_(1).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_17 (1).png\",\"width\":1672,\"height\":941},{\"id\":\"mtgtw85x-w8ovxs\",\"file\":\"minimax_h3_timeline_director/1788155969034_hgd9j_ChatGPT_Image_2026年8月31日_13_59_18_(3).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_18 (3).png\",\"width\":1672,\"height\":941},{\"id\":\"mtgtw83t-i5mygx\",\"file\":\"minimax_h3_timeline_director/1788155968992_oae8e_ChatGPT_Image_2026年8月31日_13_59_18_(2).png\",\"name\":\"ChatGPT Image 2026年8月31日 13_59_18 (2).png\",\"width\":1672,\"height\":941}],\"audios\":[{\"id\":\"mtcjg4fj-n4ukyh\",\"file\":\"minimax_h3_timeline_director/1787896556761_krhgv_女生.mp3\",\"name\":\"女生.mp3\",\"duration\":11.352,\"trimStart\":0},{\"id\":\"mtcjg5ts-5cv978\",\"file\":\"minimax_h3_timeline_director/1787896558683_hbkaq_小猪.mp3\",\"name\":\"小猪.mp3\",\"duration\":11.568,\"trimStart\":0},{\"id\":\"mtcjg7h3-42719m\",\"file\":\"minimax_h3_timeline_director/1787896560805_va70v_小巫师.mp3\",\"name\":\"小巫师.mp3\",\"duration\":13.824,\"trimStart\":0}],\"segmentConfig\":{\"count\":0,\"segments\":[]}}",
+        "minimax_h3_timeline": ""
+      }
+    },
+    {
+      "id": 13,
+      "type": "KSamplerSelect",
+      "pos": [
+        3368.7947419404,
+        -1856.5852454665176
+      ],
+      "size": [
+        327.5830274873233,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 23,
+      "type": "CreateVideo",
+      "pos": [
+        4420,
+        -2075
+      ],
+      "size": [
+        270,
+        126
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 10
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24,
+        8,
+        "sRGB"
+      ],
+      "widgets_values_named": {
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB"
+      }
+    },
+    {
+      "id": 28,
+      "type": "MiniMaxH3FiniteSegmentExpansion",
+      "pos": [
+        3200,
+        -2050
+      ],
+      "size": [
+        520,
+        330
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "plan",
+          "type": "MINIMAX_H3_TIMELINE_PLAN",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "有限分段规划",
+          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "实际重叠帧",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "规划状态",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3FiniteSegmentExpansion"
+      },
+      "widgets_values": [
+        "subject_definitions:\n<Subject 1> is Lina, the young female adventurer in <Picture 1>, with long wavy brown hair, expressive brown eyes, a white blouse beneath a fitted brown leather corset, dark trousers, tall brown boots, a long blue-purple coat, turquoise jewelry, and a leather shoulder satchel.\n<Subject 2> is Bobo, the anthropomorphic pig explorer in <Picture 3>, with pink skin, a round body, large ears, a cream shirt, an olive-green utility vest, a red neckerchief, brown shorts, leather straps, and a brown satchel.\n<Subject 3> is Amo, the small child wizard in <Picture 2>, with short dark hair, a large purple pointed hat decorated with gold stars, a purple embroidered cloak, brown boots, and a wooden staff tipped with a glowing blue crystal.\n<Audio 1> is the voice-timbre reference for <Subject 1> (S1), preserving her female vocal identity and urgent emotional delivery without copying the original words.\n\nsummary:\n[reference generation + audio reference] A cinematic 3D animated fantasy sequence establishes Lina, Bobo, and Amo struggling through a severe desert sandstorm. As visibility collapses, Bobo steps onto an unstable dune edge and falls into a deep sand hollow, leaving the other two in an immediate rescue position.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 2]-[Shot 4]): fully_preserved - Lina retains the facial identity, hair, clothing, proportions, jewelry, boots, and satchel established by <Picture 1>.\n<Subject 2> (appears in [Shot 2]-[Shot 4]): fully_preserved - Bobo retains the pig anatomy, round proportions, explorer clothing, neckerchief, straps, and satchel established by <Picture 3>.\n<Subject 3> (appears in [Shot 2]-[Shot 4]): fully_preserved - Amo retains the childlike proportions, purple star-decorated hat, embroidered cloak, boots, staff, and blue crystal established by <Picture 2>.\n<Audio 1>: reference - Lina follows <Audio 1>'s vocal timbre with forceful delivery raised over the storm.\n\ndetailed_description:\nThe target video uses polished cinematic 3D fantasy animation, warm amber desert light filtered through airborne dust, realistic wind-driven cloth and sand, expressive character acting, and restrained adventure-film camerawork.\n[Shot 1] An extreme-wide environmental shot looks across an empty desert basin. A dense wall of orange-brown sand advances from the horizon, swallowing distant dunes one layer at a time. Wind carves long ribbons of sand across the foreground while the camera slowly pushes toward three faint figures emerging through the haze.\n[Shot 2] At 00:02.400, a medium side-tracking shot reveals Lina leading on the left, Amo walking close behind her at center, and Bobo struggling several steps back on the right. Lina shields her eyes with one forearm while gripping a rope tied loosely around the group's waists. Amo lowers his pointed hat against the wind. Bobo leans forward, almost blind in the blowing sand. Lina (S1), using <Audio 1>'s timbre, turns and shouts, <d>[Chinese] 靠紧我，别走散！</d>\n[Shot 3] At 00:05.200, a low insert shot follows Bobo's boots. His front hoof presses onto a thin overhanging crust of sand. A narrow fracture spreads silently beneath it, then the entire edge shears away. The rope snaps taut as Bobo drops from view, pulling Lina and Amo backward.\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame looks diagonally down the collapsed slope. Bobo is in the lower-left, buried to his chest in flowing sand and reaching upward with his right hand. Lina lies braced in the upper-right, gripping Bobo's wrist with both hands. Amo kneels in the upper-left with his staff planted vertically into the dune and both hands around it. The rope connects the three in a clear triangle. Their faces show shock and strain; the camera remains locked while amber storm light and slowly streaming sand preserve the pose until 00:08.000.\n\noverall_soundscape:\nA continuous desert gale dominates the sequence, accompanied by airborne sand striking leather and cloth, strained footsteps, fluttering fabric, and muffled breathing. The dune edge breaks with a deep granular crack, followed by sliding sand, a snapping rope, and brief exertion sounds.\n\nnon_diegetic_music:\nA sparse low-string pulse with distant frame drums and a restrained metallic drone develops slowly beneath the storm, then holds a tense sustained note over the final rescue position.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established facial identity, long brown hair, blue-purple coat, leather clothing, jewelry, boots, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, round proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple star-decorated hat, embroidered cloak, boots, staff, and blue crystal.\n<Audio 2> is the voice-timbre reference for the same Bobo carried into the opening Latent Guide (S2), preserving his established vocal identity and frightened delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] The rescue continues directly from Bobo's fall. Lina and Amo attempt to pull him up, but the unstable slope keeps collapsing and the rope begins cutting through the dune, making their initial rescue method fail.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the opening Latent Guide preserves her prone rescue pose.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the opening Latent Guide preserves his trapped position.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the opening Latent Guide preserves his planted-staff pose.\n<Audio 2>: reference - Bobo follows <Audio 2>'s vocal timbre with breathless fear and rising panic.\n\ndetailed_description:\nThe established cinematic 3D fantasy style, character proportions, storm direction, amber light, and rescue geography continue without interruption.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide slope composition continues exactly. Bobo remains in the lower-left, buried to his chest in flowing sand and reaching upward with his right hand. Lina remains braced in the upper-right, gripping Bobo's wrist with both hands. Amo kneels in the upper-left with his staff planted vertically into the dune and both hands around it. The rope connects them in the same clear triangle. The locked camera, strained expressions, amber storm light, sliding sand, gale, and sustained musical note continue unchanged.\n[Shot 2] At 00:01.000, without changing the screen direction, Lina shifts from Bobo's wrist to the rope beneath his arms. Amo wraps the loose rope once around the planted staff. Lina leans backward and pulls; Bobo rises only a few centimeters before the sand collapses around his body and drags him down again. No one speaks. Their breathing and small involuntary cries are nearly lost beneath the wind.\n[Shot 3] At 00:03.800, a tight environmental insert centers on the rope sawing through the dune's edge. Individual fibers stretch under tension while loose sand pours through the widening groove. Lina's boots slide several inches toward the drop. Bobo (S2), using <Audio 2>'s timbre, looks up through the sand and cries, <d>[Chinese] 绳子撑不住了！</d>\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame holds on a more dangerous but clearly separated arrangement: Bobo hangs in the lower-center against a steep sand wall, the rope secured beneath his arms; Lina braces in the upper-right with both boots buried and both hands locked around the taut rope; Amo kneels in the upper-left, pressing his upright staff deeper into the dune as a small blue ring flickers around its base. Lina looks toward Amo for a solution, Amo studies the unstable sand, and Bobo looks upward. The camera remains locked and the action settles into a strained hold until 00:08.000.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the preceding gale, sliding sand, rope tension, strained breathing, and sustained music continue seamlessly. After 00:01.000, rope fibers creak, boots scrape through sand, fabric tightens, and repeated granular collapses emphasize that the first rescue attempt is failing.\n\nnon_diegetic_music:\nThe preceding sustained note continues through 00:01.000. Low strings then repeat a slow, tightening two-note pattern while subdued drums fade away, leaving exposed tension around the fraying rope.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established face, hair, blue-purple coat, leather clothing, boots, jewelry, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple hat and cloak, boots, staff, and blue crystal.\n<Audio 3> is the voice-timbre reference for the same Amo carried into the opening Latent Guide (S3), preserving his child-wizard voice and determined delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] Amo changes the rescue strategy by using controlled magic to fuse the loose sand around his staff into a solid glass anchor. Lina holds Bobo steady until the anchor forms, and the three begin one coordinated pull.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the Latent Guide preserves her braced position and grip on the rope.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the Latent Guide preserves his hanging position.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the Latent Guide preserves his position beside the unstable staff.\n<Audio 3>: reference - Amo follows <Audio 3>'s vocal timbre with focused, strained determination.\n\ndetailed_description:\nThe established cinematic 3D fantasy animation continues with the same storm, slope geography, amber illumination, blue magic color, and restrained camera language.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide composition continues exactly. Bobo hangs in the lower-center against the steep sand wall with the rope secured beneath his arms. Lina braces in the upper-right with both boots buried and both hands locked around the taut rope. Amo kneels in the upper-left, pressing his upright staff into the dune as a small blue ring flickers around its base. Lina looks toward Amo, Amo studies the unstable sand, and Bobo looks upward. The locked camera, gale, rope tension, sliding sand, and exposed two-note string pattern continue unchanged.\n[Shot 2] At 00:01.000, the camera moves into a close-up of Amo's hands tightening around the staff. He closes his eyes and steadies his breathing instead of forcing a large burst of magic. The blue light flows downward in thin branching lines, melting and fusing the loose grains around the staff into a translucent disk of blue-black desert glass. Amo (S3), using <Audio 3>'s timbre, opens his eyes and calls, <d>[Chinese] 等蓝光稳住，我们一起拉！</d>\n[Shot 3] At 00:04.000, an insert shot shows the glass disk widening beneath the surface. The rope stops slicing through the dune and pulls firmly against the staff. Blowing sand skims across the smooth glass without disturbing it. The blue flicker becomes a steady glow.\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame shows the coordinated rescue at its hardest point: Bobo's head and shoulders have risen above the lower-center rim, and both forearms press flat onto the ledge; Lina stands in the upper-right, leaning backward with the rope pulled tight across her body; Amo kneels in the upper-left with one hand pressing the staff into the solid glass anchor and the other hand gripping the rope. All three strain in the same direction. The camera remains locked, the blue anchor glows steadily, and the characters hold clear, separated silhouettes until 00:08.000.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the previous gale, rope creak, sliding sand, breathing, and two-note string figure continue seamlessly. After 00:01.000, a low magical resonance, soft glass crystallization, settling grains, tightened rope, and synchronized exertion sounds replace the earlier uncontrolled collapse.\n\nnon_diegetic_music:\nThe exposed two-note string pattern continues through 00:01.000. A quiet glass-harmonica tone joins as the anchor forms, followed by a slow low-drum heartbeat during the coordinated pull.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established face, long hair, blue-purple coat, leather clothing, boots, jewelry, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, round proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple star-decorated clothing, boots, staff, and blue crystal.\n<Audio 2> is the voice-timbre reference for the same Bobo carried into the opening Latent Guide (S2), preserving his established vocal identity with exhausted, vulnerable delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] The coordinated pull continues until Bobo reaches solid ground. The action slows after the rescue, allowing the three characters to recover together while the sandstorm begins to weaken around them.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the Latent Guide preserves her final pulling position.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the Latent Guide preserves his position at the rim.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the Latent Guide preserves his grip and glass-anchor magic.\n<Audio 2>: reference - Bobo follows <Audio 2>'s vocal timbre with quiet, exhausted emotion after the rescue.\n\ndetailed_description:\nThe final segment preserves the established cinematic 3D fantasy style and rescue geography, but gradually shifts from urgent amber-blue contrast toward softer post-storm light and calmer camerawork.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide rescue composition continues exactly. Bobo's head and shoulders remain above the lower-center rim with both forearms pressed flat onto the ledge. Lina stands in the upper-right, leaning backward with the rope tight across her body. Amo kneels in the upper-left with one hand pressing the staff into the solid glass anchor and the other gripping the rope. All three strain in the same direction. The locked camera, steady blue anchor, gale, taut rope, glass tone, and slow drum heartbeat continue unchanged.\n[Shot 2] At 00:01.000, without a cut, Lina takes two slow backward steps while Amo pulls hand over hand. Bobo digs his forearms into the firm glass-edged sand and slides across the rim. The camera makes a restrained push toward them. At 00:03.300, Bobo's hips clear the edge and he rolls onto solid ground. Lina releases the rope and drops to one knee beside him while Amo lets the blue light fade. No one speaks during the rescue; only their breathing and the storm remain.\n[Shot 3] At 00:04.600, a quiet shoulder-level three-shot holds on the aftermath. Bobo sits at center, trembling and covered in sand. Lina remains on his right with one hand firmly on his shoulder. Amo sits on his left, still holding the staff but resting his forehead against it. Bobo (S2), using <Audio 2>'s timbre, looks between them and says softly, <d>[Chinese] 我以为……我回不来了。</d> Lina answers without words by pulling him into a brief embrace, and Amo leans into them.\n[Shot 4] At 00:06.500, the camera cuts to an extreme-wide environmental shot and slowly pulls away. The three small figures sit close together behind the shelter of the dune, Lina on the right, Bobo in the center, and Amo on the left. The blue glass anchor remains faintly visible beside them. The storm wall thins in the distance, revealing a narrow beam of warm sunlight across the sand. Their coats and hat move gently as the wind weakens, ending on stillness rather than another event.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the preceding gale, taut rope, magical glass resonance, exertion, and slow drum heartbeat continue seamlessly. After 00:01.000, rope strain and scraping sand gradually give way to exhausted breathing, soft fabric movement, a fading magical hum, and a quieter desert wind.\n\nnon_diegetic_music:\nThe slow drum heartbeat continues until Bobo reaches safety, then stops. Warm sustained strings and a soft solo flute enter beneath the quiet reunion, resolving into one gentle chord as the camera pulls back.",
+        4,
+        48,
+        true
+      ],
+      "widgets_values_named": {
+        "segment_prompts": "subject_definitions:\n<Subject 1> is Lina, the young female adventurer in <Picture 1>, with long wavy brown hair, expressive brown eyes, a white blouse beneath a fitted brown leather corset, dark trousers, tall brown boots, a long blue-purple coat, turquoise jewelry, and a leather shoulder satchel.\n<Subject 2> is Bobo, the anthropomorphic pig explorer in <Picture 3>, with pink skin, a round body, large ears, a cream shirt, an olive-green utility vest, a red neckerchief, brown shorts, leather straps, and a brown satchel.\n<Subject 3> is Amo, the small child wizard in <Picture 2>, with short dark hair, a large purple pointed hat decorated with gold stars, a purple embroidered cloak, brown boots, and a wooden staff tipped with a glowing blue crystal.\n<Audio 1> is the voice-timbre reference for <Subject 1> (S1), preserving her female vocal identity and urgent emotional delivery without copying the original words.\n\nsummary:\n[reference generation + audio reference] A cinematic 3D animated fantasy sequence establishes Lina, Bobo, and Amo struggling through a severe desert sandstorm. As visibility collapses, Bobo steps onto an unstable dune edge and falls into a deep sand hollow, leaving the other two in an immediate rescue position.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 2]-[Shot 4]): fully_preserved - Lina retains the facial identity, hair, clothing, proportions, jewelry, boots, and satchel established by <Picture 1>.\n<Subject 2> (appears in [Shot 2]-[Shot 4]): fully_preserved - Bobo retains the pig anatomy, round proportions, explorer clothing, neckerchief, straps, and satchel established by <Picture 3>.\n<Subject 3> (appears in [Shot 2]-[Shot 4]): fully_preserved - Amo retains the childlike proportions, purple star-decorated hat, embroidered cloak, boots, staff, and blue crystal established by <Picture 2>.\n<Audio 1>: reference - Lina follows <Audio 1>'s vocal timbre with forceful delivery raised over the storm.\n\ndetailed_description:\nThe target video uses polished cinematic 3D fantasy animation, warm amber desert light filtered through airborne dust, realistic wind-driven cloth and sand, expressive character acting, and restrained adventure-film camerawork.\n[Shot 1] An extreme-wide environmental shot looks across an empty desert basin. A dense wall of orange-brown sand advances from the horizon, swallowing distant dunes one layer at a time. Wind carves long ribbons of sand across the foreground while the camera slowly pushes toward three faint figures emerging through the haze.\n[Shot 2] At 00:02.400, a medium side-tracking shot reveals Lina leading on the left, Amo walking close behind her at center, and Bobo struggling several steps back on the right. Lina shields her eyes with one forearm while gripping a rope tied loosely around the group's waists. Amo lowers his pointed hat against the wind. Bobo leans forward, almost blind in the blowing sand. Lina (S1), using <Audio 1>'s timbre, turns and shouts, <d>[Chinese] 靠紧我，别走散！</d>\n[Shot 3] At 00:05.200, a low insert shot follows Bobo's boots. His front hoof presses onto a thin overhanging crust of sand. A narrow fracture spreads silently beneath it, then the entire edge shears away. The rope snaps taut as Bobo drops from view, pulling Lina and Amo backward.\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame looks diagonally down the collapsed slope. Bobo is in the lower-left, buried to his chest in flowing sand and reaching upward with his right hand. Lina lies braced in the upper-right, gripping Bobo's wrist with both hands. Amo kneels in the upper-left with his staff planted vertically into the dune and both hands around it. The rope connects the three in a clear triangle. Their faces show shock and strain; the camera remains locked while amber storm light and slowly streaming sand preserve the pose until 00:08.000.\n\noverall_soundscape:\nA continuous desert gale dominates the sequence, accompanied by airborne sand striking leather and cloth, strained footsteps, fluttering fabric, and muffled breathing. The dune edge breaks with a deep granular crack, followed by sliding sand, a snapping rope, and brief exertion sounds.\n\nnon_diegetic_music:\nA sparse low-string pulse with distant frame drums and a restrained metallic drone develops slowly beneath the storm, then holds a tense sustained note over the final rescue position.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established facial identity, long brown hair, blue-purple coat, leather clothing, jewelry, boots, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, round proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple star-decorated hat, embroidered cloak, boots, staff, and blue crystal.\n<Audio 2> is the voice-timbre reference for the same Bobo carried into the opening Latent Guide (S2), preserving his established vocal identity and frightened delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] The rescue continues directly from Bobo's fall. Lina and Amo attempt to pull him up, but the unstable slope keeps collapsing and the rope begins cutting through the dune, making their initial rescue method fail.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the opening Latent Guide preserves her prone rescue pose.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the opening Latent Guide preserves his trapped position.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the opening Latent Guide preserves his planted-staff pose.\n<Audio 2>: reference - Bobo follows <Audio 2>'s vocal timbre with breathless fear and rising panic.\n\ndetailed_description:\nThe established cinematic 3D fantasy style, character proportions, storm direction, amber light, and rescue geography continue without interruption.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide slope composition continues exactly. Bobo remains in the lower-left, buried to his chest in flowing sand and reaching upward with his right hand. Lina remains braced in the upper-right, gripping Bobo's wrist with both hands. Amo kneels in the upper-left with his staff planted vertically into the dune and both hands around it. The rope connects them in the same clear triangle. The locked camera, strained expressions, amber storm light, sliding sand, gale, and sustained musical note continue unchanged.\n[Shot 2] At 00:01.000, without changing the screen direction, Lina shifts from Bobo's wrist to the rope beneath his arms. Amo wraps the loose rope once around the planted staff. Lina leans backward and pulls; Bobo rises only a few centimeters before the sand collapses around his body and drags him down again. No one speaks. Their breathing and small involuntary cries are nearly lost beneath the wind.\n[Shot 3] At 00:03.800, a tight environmental insert centers on the rope sawing through the dune's edge. Individual fibers stretch under tension while loose sand pours through the widening groove. Lina's boots slide several inches toward the drop. Bobo (S2), using <Audio 2>'s timbre, looks up through the sand and cries, <d>[Chinese] 绳子撑不住了！</d>\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame holds on a more dangerous but clearly separated arrangement: Bobo hangs in the lower-center against a steep sand wall, the rope secured beneath his arms; Lina braces in the upper-right with both boots buried and both hands locked around the taut rope; Amo kneels in the upper-left, pressing his upright staff deeper into the dune as a small blue ring flickers around its base. Lina looks toward Amo for a solution, Amo studies the unstable sand, and Bobo looks upward. The camera remains locked and the action settles into a strained hold until 00:08.000.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the preceding gale, sliding sand, rope tension, strained breathing, and sustained music continue seamlessly. After 00:01.000, rope fibers creak, boots scrape through sand, fabric tightens, and repeated granular collapses emphasize that the first rescue attempt is failing.\n\nnon_diegetic_music:\nThe preceding sustained note continues through 00:01.000. Low strings then repeat a slow, tightening two-note pattern while subdued drums fade away, leaving exposed tension around the fraying rope.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established face, hair, blue-purple coat, leather clothing, boots, jewelry, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple hat and cloak, boots, staff, and blue crystal.\n<Audio 3> is the voice-timbre reference for the same Amo carried into the opening Latent Guide (S3), preserving his child-wizard voice and determined delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] Amo changes the rescue strategy by using controlled magic to fuse the loose sand around his staff into a solid glass anchor. Lina holds Bobo steady until the anchor forms, and the three begin one coordinated pull.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the Latent Guide preserves her braced position and grip on the rope.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the Latent Guide preserves his hanging position.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the Latent Guide preserves his position beside the unstable staff.\n<Audio 3>: reference - Amo follows <Audio 3>'s vocal timbre with focused, strained determination.\n\ndetailed_description:\nThe established cinematic 3D fantasy animation continues with the same storm, slope geography, amber illumination, blue magic color, and restrained camera language.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide composition continues exactly. Bobo hangs in the lower-center against the steep sand wall with the rope secured beneath his arms. Lina braces in the upper-right with both boots buried and both hands locked around the taut rope. Amo kneels in the upper-left, pressing his upright staff into the dune as a small blue ring flickers around its base. Lina looks toward Amo, Amo studies the unstable sand, and Bobo looks upward. The locked camera, gale, rope tension, sliding sand, and exposed two-note string pattern continue unchanged.\n[Shot 2] At 00:01.000, the camera moves into a close-up of Amo's hands tightening around the staff. He closes his eyes and steadies his breathing instead of forcing a large burst of magic. The blue light flows downward in thin branching lines, melting and fusing the loose grains around the staff into a translucent disk of blue-black desert glass. Amo (S3), using <Audio 3>'s timbre, opens his eyes and calls, <d>[Chinese] 等蓝光稳住，我们一起拉！</d>\n[Shot 3] At 00:04.000, an insert shot shows the glass disk widening beneath the surface. The rope stops slicing through the dune and pulls firmly against the staff. Blowing sand skims across the smooth glass without disturbing it. The blue flicker becomes a steady glow.\n[Shot 4] At 00:07.000, a stable medium-wide continuation frame shows the coordinated rescue at its hardest point: Bobo's head and shoulders have risen above the lower-center rim, and both forearms press flat onto the ledge; Lina stands in the upper-right, leaning backward with the rope pulled tight across her body; Amo kneels in the upper-left with one hand pressing the staff into the solid glass anchor and the other hand gripping the rope. All three strain in the same direction. The camera remains locked, the blue anchor glows steadily, and the characters hold clear, separated silhouettes until 00:08.000.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the previous gale, rope creak, sliding sand, breathing, and two-note string figure continue seamlessly. After 00:01.000, a low magical resonance, soft glass crystallization, settling grains, tightened rope, and synchronized exertion sounds replace the earlier uncontrolled collapse.\n\nnon_diegetic_music:\nThe exposed two-note string pattern continues through 00:01.000. A quiet glass-harmonica tone joins as the anchor forms, followed by a slow low-drum heartbeat during the coordinated pull.\n\n--- SEGMENT ---\n\nsubject_definitions:\n<Subject 1> is Lina already carried into the opening Latent Guide; <Picture 1> calibrates her established face, long hair, blue-purple coat, leather clothing, boots, jewelry, and satchel.\n<Subject 2> is Bobo already carried into the opening Latent Guide; <Picture 3> calibrates his established pig anatomy, round proportions, explorer clothing, red neckerchief, straps, and satchel.\n<Subject 3> is Amo already carried into the opening Latent Guide; <Picture 2> calibrates his established childlike identity, purple star-decorated clothing, boots, staff, and blue crystal.\n<Audio 2> is the voice-timbre reference for the same Bobo carried into the opening Latent Guide (S2), preserving his established vocal identity with exhausted, vulnerable delivery.\n\nsummary:\n[video continuation + reference generation + audio reference] The coordinated pull continues until Bobo reaches solid ground. The action slows after the rescue, allowing the three characters to recover together while the sandstorm begins to weaken around them.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 1> recalibrates Lina while the Latent Guide preserves her final pulling position.\n<Subject 2> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 3> recalibrates Bobo while the Latent Guide preserves his position at the rim.\n<Subject 3> (appears in [Shot 1]-[Shot 4]): fully_preserved - <Picture 2> recalibrates Amo while the Latent Guide preserves his grip and glass-anchor magic.\n<Audio 2>: reference - Bobo follows <Audio 2>'s vocal timbre with quiet, exhausted emotion after the rescue.\n\ndetailed_description:\nThe final segment preserves the established cinematic 3D fantasy style and rescue geography, but gradually shifts from urgent amber-blue contrast toward softer post-storm light and calmer camerawork.\n[Shot 1] During 00:00.000-00:01.000, the stable medium-wide rescue composition continues exactly. Bobo's head and shoulders remain above the lower-center rim with both forearms pressed flat onto the ledge. Lina stands in the upper-right, leaning backward with the rope tight across her body. Amo kneels in the upper-left with one hand pressing the staff into the solid glass anchor and the other gripping the rope. All three strain in the same direction. The locked camera, steady blue anchor, gale, taut rope, glass tone, and slow drum heartbeat continue unchanged.\n[Shot 2] At 00:01.000, without a cut, Lina takes two slow backward steps while Amo pulls hand over hand. Bobo digs his forearms into the firm glass-edged sand and slides across the rim. The camera makes a restrained push toward them. At 00:03.300, Bobo's hips clear the edge and he rolls onto solid ground. Lina releases the rope and drops to one knee beside him while Amo lets the blue light fade. No one speaks during the rescue; only their breathing and the storm remain.\n[Shot 3] At 00:04.600, a quiet shoulder-level three-shot holds on the aftermath. Bobo sits at center, trembling and covered in sand. Lina remains on his right with one hand firmly on his shoulder. Amo sits on his left, still holding the staff but resting his forehead against it. Bobo (S2), using <Audio 2>'s timbre, looks between them and says softly, <d>[Chinese] 我以为……我回不来了。</d> Lina answers without words by pulling him into a brief embrace, and Amo leans into them.\n[Shot 4] At 00:06.500, the camera cuts to an extreme-wide environmental shot and slowly pulls away. The three small figures sit close together behind the shelter of the dune, Lina on the right, Bobo in the center, and Amo on the left. The blue glass anchor remains faintly visible beside them. The storm wall thins in the distance, revealing a narrow beam of warm sunlight across the sand. Their coats and hat move gently as the wind weakens, ending on stillness rather than another event.\n\noverall_soundscape:\nDuring 00:00.000-00:01.000, the preceding gale, taut rope, magical glass resonance, exertion, and slow drum heartbeat continue seamlessly. After 00:01.000, rope strain and scraping sand gradually give way to exhausted breathing, soft fabric movement, a fading magical hum, and a quieter desert wind.\n\nnon_diegetic_music:\nThe slow drum heartbeat continues until Bobo reaches safety, then stops. Warm sustained strings and a soft solo flute enter beneath the quiet reunion, resolving into one gentle chord as the camera pulls back.",
+        "segment_count": 4,
+        "overlap_frames": 48,
+        "inject_continuity_instruction": true
+      }
+    },
+    {
+      "id": 29,
+      "type": "SaveVideo",
+      "pos": [
+        4810,
+        -2010
+      ],
+      "size": [
+        600,
+        140
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "video/H3_finite_segments",
+        "mp4",
+        "h264",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "video/H3_finite_segments",
+        "format": "mp4",
+        "codec": "h264"
+      }
+    },
+    {
+      "id": 30,
+      "type": "MiniMaxH3FiniteSegmentSampler",
+      "pos": [
+        3820,
+        -2050
+      ],
+      "size": [
+        470,
+        330
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 3
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 5
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 6
+        },
+        {
+          "name": "finite_plan",
+          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "link": 13
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 8
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "末段 sampled latent",
+          "type": "LATENT",
+          "links": null
+        },
+        {
+          "name": "合并画面",
+          "type": "IMAGE",
+          "links": [
+            10
+          ]
+        },
+        {
+          "name": "合并音频",
+          "type": "AUDIO",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "采样状态",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3FiniteSegmentSampler"
+      },
+      "widgets_values": [
+        2157,
+        true,
+        true,
+        "match"
+      ],
+      "widgets_values_named": {
+        "seed": 2157,
+        "increment_seed": true,
+        "continue_audio_latent": true,
+        "ref_image_size": "match"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      4,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      4,
+      0,
+      9,
+      0,
+      "MODEL"
+    ],
+    [
+      3,
+      4,
+      0,
+      30,
+      0,
+      "MODEL"
+    ],
+    [
+      4,
+      2,
+      0,
+      30,
+      1,
+      "CLIP"
+    ],
+    [
+      5,
+      3,
+      0,
+      30,
+      2,
+      "VAE"
+    ],
+    [
+      6,
+      8,
+      0,
+      30,
+      3,
+      "VAE"
+    ],
+    [
+      7,
+      11,
+      0,
+      28,
+      4,
+      "MINIMAX_H3_TIMELINE_PLAN"
+    ],
+    [
+      8,
+      13,
+      0,
+      30,
+      5,
+      "SAMPLER"
+    ],
+    [
+      9,
+      9,
+      0,
+      30,
+      6,
+      "SIGMAS"
+    ],
+    [
+      10,
+      30,
+      1,
+      23,
+      0,
+      "IMAGE"
+    ],
+    [
+      11,
+      30,
+      2,
+      23,
+      1,
+      "AUDIO"
+    ],
+    [
+      12,
+      23,
+      0,
+      29,
+      0,
+      "VIDEO"
+    ],
+    [
+      13,
+      28,
+      0,
+      30,
+      4,
+      "MINIMAX_H3_FINITE_SEGMENT_PLAN"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.72,
+      "offset": [
+        -1500,
+        1800
+      ]
+    },
+    "frontendVersion": "1.49.6"
+  },
+  "version": 0.4
+}

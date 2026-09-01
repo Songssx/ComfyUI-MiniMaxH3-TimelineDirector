@@ -1,5 +1,31 @@
 # ComfyUI MiniMax H3 Timeline Director
 
+[简体中文](README_CN.md) · English
+
+## Headline feature: lightweight unlimited-length video generation
+
+The plugin splits any target duration into continuous segments and completes them in one ComfyUI
+execution: per-segment generation, direct continuation from the previous AV-latent tail, a linear
+`0→1` temporal mask, overlap removal, and final synchronized assembly. Extend the result by increasing
+the segment count—without generic Loop nodes or duplicated sampler chains. Practical length is limited
+only by local VRAM, RAM, disk space, and ComfyUI execution limits.
+
+[Download unlimited-length workflow](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
+[Chinese guide](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
+[Chinese prompt specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
+
+[![Lightweight unlimited-length workflow](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/infinite-workflow.webp)](example_workflows/MiniMax时间线插件内置有限分段工作流.json)
+
+### Two directly generated, approximately one-minute examples
+
+Both videos were produced in one plugin execution and are `52.625 seconds / 1263 frames / 24fps`.
+Click a poster to play or download the original MP4. All media is hosted as GitHub Release assets, so
+it adds nothing to the plugin clone or installation size.
+
+| Finite direct-latent continuation | References with a 48-frame overlap |
+| --- | --- |
+| [![Play example one](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/case-finite-segments-60s.webp)](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/H3_finite_segments_60s.mp4) | [![Play example two](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/case-reference-overlap-60s.webp)](https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector/releases/download/v0.6.0/H3_reference_overlap48_60s.mp4) |
+
 <p align="center">
   <img src="docs/images/creator-wecom.webp" alt="Creator WeCom contact card" width="360">
 </p>
@@ -11,10 +37,6 @@
   <a href="https://www.youtube.com/@shixiongsong">YouTube</a>
 </p>
 
-[简体中文](README_CN.md) · English
-
-> **Experimental branch build `0.5.0.dev0`:** this branch contains generic Loop, direct-latent continuation, and per-prompt segmented material planning for long-video testing. The stable release remains on `main`.
-
 An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference to Video** workflow. It brings reference videos, paired soundtracks, fixed Guides, standalone images, and standalone audio into one compact editing surface.
 
 > Video-generation agents should read the [Chinese segmented long-video guide](docs/AGENT_LONG_VIDEO_GUIDE_CN.md).
@@ -24,6 +46,7 @@ An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference
 - Multi-clip timeline with move, trim, split, delete, snapping, and numeric positioning.
 - Only media intersecting the cyan generation range participates in the current reference or Guide plan.
 - Three per-clip modes: `Fixed Guide`, `Editable Reference`, and `Boundary Only`.
+- Native text-to-video when no image, video, or audio material is uploaded; the encoder creates the standard empty H3 AV latent from the prompt alone.
 - Bound source audio follows video edits and can be disabled independently.
 - Silent low-resolution monitoring proxies up to `480×270 / 12fps`.
 - Multi-select, external file drop, deletion, and drag reordering for image/audio bins.
@@ -39,6 +62,8 @@ An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference
 | **MiniMax H3 Material Planner** | Edits media and outputs a compact H3 plan plus an ordered Omni media bundle. |
 | **MiniMax H3 Omni Media-Bundle Prompt Bridge** | Sends the bundle to an installed Prompt Rewriter Omni backend and returns only `rewritten_prompt`. |
 | **MiniMax H3 Plan Encoder** | Combines the plan, prompt, CLIP, and VAEs into H3 conditioning and latent outputs. |
+| **MiniMax H3 Finite Segment Expansion** | Creates a lightweight long-video plan from prompt/material ordinals without sampling. |
+| **MiniMax H3 Finite Segment Sampling** | Expands an acyclic graph for direct-latent continuation, masking, sampling, deduplication, and assembly. |
 | **MiniMax H3 Timeline Director (Compatibility)** | Preserves the original all-in-one workflow and older saved workflows. |
 
 The split architecture avoids a ComfyUI dependency cycle:
@@ -59,7 +84,7 @@ Restart ComfyUI and search for `MiniMax H3`.
 
 ### Requirements
 
-- A recent ComfyUI build with the native MiniMax H3 nodes and `MiniMaxH3AddGuide`.
+- A recent ComfyUI build with the native MiniMax H3 nodes; `MiniMaxH3AddGuide` is additionally required only when Guides are used.
 - MiniMax H3 Ref2VA model, CLIP, video VAE, and audio VAE.
 - Python 3.10 or newer.
 - ComfyUI's `imageio-ffmpeg` package for low-resolution preview proxies.
@@ -94,17 +119,16 @@ Adds **MiniMax-H3 Prompt Rewriter Omni (sees and hears)** so the same ordered me
 
 > This workflow requires [MiniMax-H3-Prompt-Rewriter-ComfyUI](https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI). Follow that project's instructions for model, quantization, and VRAM requirements.
 
-### 4. Loop-based segmented long-video generation (experimental)
+### 4. Plugin-owned unlimited-length video generation
 
-This workflow selects prompts and per-segment reference media by Loop iteration, carries the previous sampled H3 video/audio latent tail directly into the next segment as a Guide, and removes duplicated overlap frames and matching audio before final assembly. Each segment can have its own images and audio, renumbered from `<Picture 1>` and `<Audio 1>`.
+**MiniMax H3 Finite Segment Expansion** only validates prompts, segment count, and media
+assignments; it performs no sampling. Connect its plan to **MiniMax H3 Finite Segment Sampling**
+to build a standard acyclic graph for direct AV-latent continuation, linear temporal masking,
+overlap removal, and ordered assembly. No generic Loop nodes are required.
 
-[Download long-video Loop workflow](example_workflows/MiniMax时间线循环长视频分段生成工作流.json)
-
-[Chinese segmented-prompt Agent specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
-
-![Loop-based segmented long-video workflow](docs/images/workflow-long-video-loop.jpg)
-
-> The example currently depends on the Loop implementation from [ComfyUI generic-loop PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923) and is an experimental test workflow. Verify segment count, frame count, FPS, and `overlap_frames` before running it.
+[Download finite workflow](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
+[Chinese guide](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
+[Chinese prompt specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
 
 ## Basic usage
 
@@ -124,11 +148,11 @@ Videos are numbered left-to-right by their intersections with the cyan range. St
 
 Generate long videos in overlapping segments. Use the previous segment's final shot as the next segment's opening Guide, and describe that overlap as `Shot 1` before new content. When assembling segments, remove the repeated Guide interval from the later segment. See the [Chinese agent guide](docs/AGENT_LONG_VIDEO_GUIDE_CN.md) for the full procedure.
 
-### Experimental direct-latent loop
+### Finite direct-latent continuation
 
-Three optional helpers integrate with ComfyUI's generic loop: a per-iteration H3 prompt selector, a direct AV-latent continuation node, and a decoded overlap trimmer. Together they carry the previous sampled latent tail into the next segment without an RGB decode/re-encode round trip, while removing duplicated video and audio before incremental export.
-
-This currently requires the draft [ComfyUI generic-loop PR #15923](https://github.com/Comfy-Org/ComfyUI/pull/15923). See the [Chinese latent-loop guide](docs/LATENT_LOOP_LONG_VIDEO_CN.md), the [segmented-prompt Agent specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md), and `tests/experiments/run_minimax_h3_latent_loop.py`.
+Finite sampling carries the previous sampled AV latent tail directly into the next opening,
+avoids an RGB decode/re-encode round trip, and applies a `0→1` temporal noise ramp across the
+overlap. The old generic-loop helper nodes and PR #15923 dependency have been removed.
 
 ## Credits
 

@@ -1184,6 +1184,8 @@ def _build_references(
 def _apply_h3_guides(conditioning, latent, vae, audio_vae, guides: list[dict[str, Any]]):
     """Apply timeline guides through ComfyUI's native, versioned H3 node."""
 
+    if not guides:
+        return conditioning
     if not hasattr(h3_nodes, "MiniMaxH3AddGuide"):
         raise RuntimeError("当前 ComfyUI 缺少 MiniMaxH3AddGuide；请更新到包含 PR #15439 的版本。")
     for guide in guides:
@@ -1370,8 +1372,8 @@ def _encode_timeline_plan(
         timeline, target_width, target_height, length
     )
     if not (ref_images or ref_videos or ref_audios or guides):
-        raise ValueError(
-            "素材规划没有可用参考：请上传图片/音频，或让生成选择区覆盖视频片段/位于两段视频之间。"
+        log.info(
+            "No reference materials in the timeline plan; encoding MiniMax H3 as pure text-to-video."
         )
     video_audio_output = _timeline_video_audio(timeline)
     standalone_audio_output = _standalone_audio_track(timeline)
