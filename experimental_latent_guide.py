@@ -19,12 +19,12 @@ from comfy_api.latest import io
 def _h3_streams(latent, label):
     samples = latent.get("samples") if isinstance(latent, dict) else None
     if samples is None or not getattr(samples, "is_nested", False):
-        raise ValueError(f"{label} 必须是 MiniMax H3 的视频+音频嵌套 latent")
+        raise ValueError(f"{label} must be a nested MiniMax H3 video-and-audio latent")
     tensors = getattr(samples, "tensors", ())
     if len(tensors) != 2 or tensors[0].ndim != 5 or tensors[0].shape[1] != 24:
-        raise ValueError(f"{label} 不是有效的 MiniMax H3 AV latent")
+        raise ValueError(f"{label} is not a valid MiniMax H3 AV latent")
     if tensors[1].ndim != 4 or tensors[1].shape[1] != 32:
-        raise ValueError(f"{label} 的音频流不是有效的 MiniMax H3 audio latent")
+        raise ValueError(f"{label} does not contain a valid MiniMax H3 audio latent")
     return tensors[0], tensors[1]
 
 
@@ -55,24 +55,24 @@ def _build_direct_latent_keyframe(
     source_video, source_audio = _h3_streams(source_latent, "source_latent")
     if target_video.shape[3:] != source_video.shape[3:]:
         raise ValueError(
-            "直接 Latent Guide 要求两段视频的 latent 空间尺寸一致；"
-            f"当前为 {tuple(source_video.shape[3:])} -> {tuple(target_video.shape[3:])}"
+            "Direct Latent Guide requires matching latent spatial dimensions; "
+            f"got {tuple(source_video.shape[3:])} -> {tuple(target_video.shape[3:])}"
         )
 
     actual_frames = _valid_guide_frames(int(guide_frames))
     guide_tokens = _video_latent_t(actual_frames)
     if guide_tokens > source_video.shape[2]:
         raise ValueError(
-            f"源 latent 只有 {source_video.shape[2]} 个视频 token，"
-            f"不足以截取 {actual_frames} 帧（需要 {guide_tokens} token）"
+            f"The source latent has only {source_video.shape[2]} video tokens; "
+            f"{actual_frames} frames require {guide_tokens} tokens"
         )
 
     target_frames = _frame_count(target_video)
     resolved = int(frame_idx) if frame_idx >= 0 else target_frames + int(frame_idx)
     if resolved < 0 or resolved + actual_frames > target_frames:
         raise ValueError(
-            f"{actual_frames} 帧 latent guide 从 frame_idx={frame_idx} 开始，"
-            f"无法放入共 {target_frames} 帧的目标视频"
+            f"A {actual_frames}-frame latent guide starting at frame_idx={frame_idx} "
+            f"does not fit in a {target_frames}-frame target"
         )
 
     tail = source_video[:1, :, -guide_tokens:, :, :].clone()
@@ -84,7 +84,7 @@ def _build_direct_latent_keyframe(
         max_target_audio = int(target_audio.shape[-1] - round(resolved * 40 / 24))
         audio_tokens = min(audio_tokens, max_target_audio)
         if audio_tokens < 1:
-            raise ValueError("目标或源 H3 audio latent 不足以放置循环音频固定区")
+            raise ValueError("The source or target H3 audio latent is too short for the fixed audio overlap")
         keyframe["audio_latent"] = source_audio[:1, :, :, -audio_tokens:].clone()
 
     return keyframe, {
@@ -100,29 +100,33 @@ def _apply_linear_temporal_noise_mask(
     source_latent,
     guide_frames,
     include_audio=False,
+    gradient=True,
 ):
-    """Copy the previous tail into the target and fade denoising from 0 to 1.
+    """Copy the previous tail and configure denoising inside the Guide interval.
 
     H3 samples video and audio as a nested latent.  The sampler interprets a
     noise-mask value of 0 as preserved input and 1 as fully denoised.  Keep the
     mask compact (one channel and 1x1 spatial size); ComfyUI expands it to each
-    stream's latent shape immediately before sampling.
+    stream's latent shape immediately before sampling.  With ``gradient``
+    enabled the Guide interval fades from 0 to 1; when disabled it stays at 0
+    so the copied Guide latent is fully preserved.  The area after the Guide
+    interval remains 1 in both modes.
     """
 
     target_video, target_audio = _h3_streams(target_latent, "target_latent")
     source_video, source_audio = _h3_streams(source_latent, "source_latent")
     if target_video.shape[3:] != source_video.shape[3:]:
         raise ValueError(
-            "线性时间遮罩要求两段视频的 latent 空间尺寸一致；"
-            f"当前为 {tuple(source_video.shape[3:])} -> {tuple(target_video.shape[3:])}"
+            "The linear temporal mask requires matching latent spatial dimensions; "
+            f"got {tuple(source_video.shape[3:])} -> {tuple(target_video.shape[3:])}"
         )
 
     actual_frames = _valid_guide_frames(int(guide_frames))
     video_tokens = _video_latent_t(actual_frames)
     if video_tokens > source_video.shape[2] or video_tokens > target_video.shape[2]:
         raise ValueError(
-            f"源或目标 latent 不足以放置 {actual_frames} 帧线性重叠区"
-            f"（需要 {video_tokens} 个视频 token）"
+            f"The source or target latent cannot hold a {actual_frames}-frame linear overlap "
+            f"({video_tokens} video tokens required)"
         )
 
     video = target_video.clone()
@@ -137,12 +141,16 @@ def _apply_linear_temporal_noise_mask(
         dtype=torch.float32,
         device=target_video.device,
     )
-    video_ramp = torch.linspace(
-        0.0,
-        1.0,
-        steps=video_tokens,
-        dtype=video_mask.dtype,
-        device=video_mask.device,
+    video_ramp = (
+        torch.linspace(
+            0.0,
+            1.0,
+            steps=video_tokens,
+            dtype=video_mask.dtype,
+            device=video_mask.device,
+        )
+        if gradient
+        else torch.zeros(video_tokens, dtype=video_mask.dtype, device=video_mask.device)
     )
     video_mask[:, :, :video_tokens, :, :] = video_ramp.reshape(1, 1, -1, 1, 1)
 
@@ -160,17 +168,21 @@ def _apply_linear_temporal_noise_mask(
             target_audio.shape[-1],
         )
         if audio_tokens < 1:
-            raise ValueError("目标或源 H3 audio latent 不足以放置线性音频重叠区")
+            raise ValueError("The source or target H3 audio latent is too short for the linear audio overlap")
         audio_tail = source_audio[:1, :, :, -audio_tokens:].to(
             device=audio.device, dtype=audio.dtype
         )
         audio[..., :audio_tokens] = audio_tail.expand(audio.shape[0], -1, -1, -1)
-        audio_ramp = torch.linspace(
-            0.0,
-            1.0,
-            steps=audio_tokens,
-            dtype=audio_mask.dtype,
-            device=audio_mask.device,
+        audio_ramp = (
+            torch.linspace(
+                0.0,
+                1.0,
+                steps=audio_tokens,
+                dtype=audio_mask.dtype,
+                device=audio_mask.device,
+            )
+            if gradient
+            else torch.zeros(audio_tokens, dtype=audio_mask.dtype, device=audio_mask.device)
         )
         audio_mask[..., :audio_tokens] = audio_ramp.reshape(1, 1, 1, -1)
 
@@ -183,6 +195,7 @@ def _apply_linear_temporal_noise_mask(
         "audio_tokens": audio_tokens,
         "video_mask_start": float(video_ramp[0].item()),
         "video_mask_end": float(video_ramp[-1].item()),
+        "gradient": bool(gradient),
     }
 
 
@@ -193,11 +206,11 @@ class MiniMaxH3AddLatentGuide(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3AddLatentGuide",
-            display_name="MiniMax H3 直接 Latent Guide（实验）",
-            category="MiniMax H3/实验",
+            display_name="MiniMax H3 Direct Latent Guide (Experimental)",
+            category="MiniMax H3/Experimental",
             description=(
-                "从已采样的 MiniMax H3 AV latent 尾部截取合法视频时间块，直接固定到另一个 "
-                "H3 目标 latent。用于和原生 RGB→VAE Encode Guide 做色彩累计 A/B 测试。"
+                "Copy a valid temporal block from the tail of a sampled MiniMax H3 AV latent "
+                "directly into another target latent for RGB/VAE round-trip A/B testing."
             ),
             inputs=[
                 io.Conditioning.Input("positive"),
@@ -209,19 +222,19 @@ class MiniMaxH3AddLatentGuide(io.ComfyNode):
                     min=1,
                     max=362,
                     step=1,
-                    tooltip="请求的尾部像素帧数；自动向下对齐为 1 或 17k+5（5/22/39…）。",
+                    tooltip="Requested tail-frame count; aligned down to 1 or 17k+5 (5/22/39...).",
                 ),
                 io.Int.Input(
                     "frame_idx",
                     default=0,
                     min=-9999,
                     max=9999,
-                    tooltip="在第二段目标视频中固定这段 latent 的起始帧。",
+                    tooltip="Start frame at which the latent block is fixed in the target segment.",
                 ),
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
-                io.String.Output(display_name="实验信息"),
+                io.String.Output(display_name="Experiment Details"),
             ],
         )
 
@@ -240,9 +253,9 @@ class MiniMaxH3AddLatentGuide(io.ComfyNode):
             positive, {"minimax_keyframes": keyframes}
         )
         report = (
-            f"直接 latent guide：请求 {guide_frames} 帧，实际 {details['frames']} 帧 / "
-            f"{details['video_tokens']} token，固定到目标第 {details['frame_idx']} 帧；"
-            "未经过 RGB 与 VAE 重编码。"
+            f"Direct latent guide: requested {guide_frames} frames, used {details['frames']} frames / "
+            f"{details['video_tokens']} tokens, fixed at target frame {details['frame_idx']}; "
+            "no RGB or VAE re-encoding was performed."
         )
         return io.NodeOutput(conditioned, report)
 
@@ -254,17 +267,17 @@ class MiniMaxH3VisualDifferenceMetrics(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3VisualDifferenceMetrics",
-            display_name="MiniMax H3 视频差异指标（实验）",
-            category="MiniMax H3/实验",
-            description="比较两批 RGB 视频帧，输出 MAE/MSE/PSNR、均值、饱和度和放大差异图。",
+            display_name="MiniMax H3 Video Difference Metrics (Experimental)",
+            category="MiniMax H3/Experimental",
+            description="Compare two RGB frame batches and report MAE, MSE, PSNR, means, saturation, and amplified differences.",
             inputs=[
                 io.Image.Input("reference"),
                 io.Image.Input("comparison"),
                 io.Float.Input("difference_gain", default=4.0, min=1.0, max=32.0, step=0.5),
             ],
             outputs=[
-                io.String.Output(display_name="指标报告"),
-                io.Image.Output(display_name="放大差异"),
+                io.String.Output(display_name="Metrics Report"),
+                io.Image.Output(display_name="Amplified Difference"),
             ],
             is_output_node=True,
         )
@@ -276,7 +289,7 @@ class MiniMaxH3VisualDifferenceMetrics(io.ComfyNode):
         width = min(reference.shape[2], comparison.shape[2])
         channels = min(reference.shape[3], comparison.shape[3], 3)
         if frames < 1 or height < 1 or width < 1 or channels < 1:
-            raise ValueError("视频差异比较没有可用的共同帧或像素")
+            raise ValueError("The video comparison has no common frames or pixels")
 
         ref = reference[:frames, :height, :width, :channels].float().clamp(0, 1)
         cmp = comparison[:frames, :height, :width, :channels].float().clamp(0, 1)
@@ -297,12 +310,12 @@ class MiniMaxH3VisualDifferenceMetrics(io.ComfyNode):
         cmp_mean, cmp_sat, cmp_clip = stats(cmp)
         report = "\n".join(
             [
-                f"共同范围：{frames} 帧，{width}x{height}",
+                f"Common range: {frames} frames, {width}x{height}",
                 f"MAE={mae:.8f}  MSE={mse:.8f}  PSNR={psnr:.3f} dB",
-                "参考 RGB 均值=" + ", ".join(f"{v:.6f}" for v in ref_mean.tolist()),
-                "对比 RGB 均值=" + ", ".join(f"{v:.6f}" for v in cmp_mean.tolist()),
-                f"平均饱和度：参考={ref_sat:.6f}  对比={cmp_sat:.6f}  变化={cmp_sat-ref_sat:+.6f}",
-                f"极值像素比例：参考={ref_clip:.6f}  对比={cmp_clip:.6f}  变化={cmp_clip-ref_clip:+.6f}",
+                "Reference RGB mean=" + ", ".join(f"{v:.6f}" for v in ref_mean.tolist()),
+                "Comparison RGB mean=" + ", ".join(f"{v:.6f}" for v in cmp_mean.tolist()),
+                f"Mean saturation: reference={ref_sat:.6f}  comparison={cmp_sat:.6f}  delta={cmp_sat-ref_sat:+.6f}",
+                f"Clipped-pixel ratio: reference={ref_clip:.6f}  comparison={cmp_clip:.6f}  delta={cmp_clip-ref_clip:+.6f}",
             ]
         )
         difference = delta.abs().mul(float(difference_gain)).clamp(0, 1)

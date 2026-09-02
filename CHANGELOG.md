@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project is released under GPL-3.0.
 
+## [Unreleased]
+
+### Changed
+
+- Use English as the base language for node definitions, tooltips, status messages, and the custom timeline UI. Add official ComfyUI `locales/en` and `locales/zh` resources; the dynamic timeline follows the active ComfyUI locale and safely falls back to English.
+- Simplify finite-segment sampling by removing the per-segment seed-increment and Guide-mask switches. Every segment now reuses the same seed, and every overlap always uses the linear `0→1` temporal mask.
+
+### Security
+
+- Replace the plugin-owned network-reachable chunk writer with ComfyUI's official `/upload/image` endpoint and keep all timeline uploads in a fixed input subfolder.
+- Restrict media inspection and preview generation to direct Timeline Director uploads, change both helpers to POST, and add file-size, duration, dimension, concurrency, timeout, and proxy-cache limits.
+- Keep detailed decoder/FFmpeg failures in server logs while returning only bounded public errors to browser clients.
+
 ## [0.6.0] - 2026-09-01
 
 ### Added

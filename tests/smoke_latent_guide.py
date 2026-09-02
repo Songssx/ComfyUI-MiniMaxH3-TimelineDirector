@@ -56,7 +56,35 @@ def main():
     assert keyframe["resolved_frame_index"] == 0
     assert keyframe["latent"].shape == (1, 24, 7, 4, 6)
     assert torch.equal(keyframe["latent"], source_video[:, :, -7:])
-    assert "实际 22 帧 / 7 token" in report
+    assert "used 22 frames / 7 tokens" in report
+
+    # The finite sampler can either fade the Guide mask from 0 to 1 or keep
+    # the whole Guide interval at 0.  New content after the interval remains 1.
+    gradient_target, _ = _latent(37)
+    gradient_masked, gradient_details = experiment._apply_linear_temporal_noise_mask(
+        gradient_target, source, guide_frames=24, include_audio=True, gradient=True
+    )
+    gradient_video_mask, gradient_audio_mask = gradient_masked["noise_mask"].tensors
+    assert gradient_details["video_tokens"] == 7
+    assert gradient_details["video_mask_start"] == 0.0
+    assert gradient_details["video_mask_end"] == 1.0
+    assert torch.allclose(gradient_video_mask[0, 0, :7, 0, 0], torch.linspace(0, 1, 7))
+    assert torch.all(gradient_video_mask[:, :, 7:] == 1)
+    assert gradient_audio_mask[..., 0].item() == 0.0
+    assert gradient_audio_mask[..., gradient_details["audio_tokens"] - 1].item() == 1.0
+
+    fixed_target, _ = _latent(37)
+    fixed_masked, fixed_details = experiment._apply_linear_temporal_noise_mask(
+        fixed_target, source, guide_frames=24, include_audio=True, gradient=False
+    )
+    fixed_video_mask, fixed_audio_mask = fixed_masked["noise_mask"].tensors
+    assert fixed_details["gradient"] is False
+    assert fixed_details["video_mask_start"] == 0.0
+    assert fixed_details["video_mask_end"] == 0.0
+    assert torch.all(fixed_video_mask[:, :, :7] == 0)
+    assert torch.all(fixed_video_mask[:, :, 7:] == 1)
+    assert torch.all(fixed_audio_mask[..., :fixed_details["audio_tokens"]] == 0)
+    assert torch.all(fixed_audio_mask[..., fixed_details["audio_tokens"]:] == 1)
 
     ref = torch.zeros((2, 8, 8, 3), dtype=torch.float32)
     cmp = torch.full_like(ref, 0.1)

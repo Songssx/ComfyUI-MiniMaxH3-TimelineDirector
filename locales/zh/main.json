@@ -1,0 +1,23 @@
+{
+  "MiniMaxH3TimelineDirector": {
+    "timeline": {
+      "brandPlanner": "MiniMax H3 素材规划台", "brandDirector": "MiniMax H3 时间线导演台（兼容）",
+      "addVideo": "＋ 视频", "addImage": "＋ 图片", "addAudio": "＋ 音频", "splitAtPlayhead": "✂ 在播放头分段", "deleteClip": "删除片段", "ready": "就绪",
+      "selectionStart": "选区起点", "referenceDuration": "参考时长", "zoom": "缩放", "fitAll": "适应全部", "matchNearestGap": "匹配最近空隙", "materialSegments": "素材分段", "updateSegments": "更新分段",
+      "timelineHelp": "拖动片段/播放头 · 边缘自动吸附 · 选区时长=生成时长", "referenceVideo": "参考视频", "videoAudio": "视频原声", "off": "关闭", "on": "开启", "noClipSelected": "未选中片段",
+      "previewEmpty": "拖动红色播放头到视频片段上，即可查看当前位置画面", "previewTitle": "低清视频监看 · 最高 480×270 / 12fps", "noPreviewVideo": "当前没有可预览的视频", "playPreview": "▶ 播放预览", "pausePreview": "❚❚ 暂停预览",
+      "previewNote": "仅预览使用低清无声代理；最终生成读取原始视频，视频原声是否参与参考由轨道开关控制。",
+      "independentImages": "独立参考图片（{count}/9）", "independentAudio": "独立参考音频（{count}/3）", "dragSortPictures": "拖拽排序 · <Picture i>", "dragSortAudio": "拖拽排序 · <Audio j>",
+      "assignByPrompt": "按提示词序号分配素材", "segmentNote": "从上方素材库拖入；每段 Picture / Audio 都从 1 重新编号", "promptLabels": "提示词编号：",
+      "audioReferenceOn": "视频原声参考已开启", "audioReferenceOff": "视频原声参考已关闭", "externalDrop": "释放以导入视频、参考图片或参考音频", "uploadBusy": "当前文件仍在上传，请稍后再拖入", "unsupportedFile": "不支持该文件；请拖入图片、音频或视频", "importedSome": "已导入 {accepted} 个文件，忽略 {rejected} 个不支持的文件",
+      "disableVideoAudio": "点击后视频仍参与参考，但不传入视频原声", "enableVideoAudio": "点击后恢复视频原声参考", "moveGenerationRegion": "拖动生成区域", "adjustGenerationStart": "调整生成区域起点", "adjustGenerationEnd": "调整生成区域终点", "movePlayhead": "拖动播放头",
+      "frames": "{count}帧", "editable": "EDIT 可替换", "clipMeta": "{duration}s · 源 {source}s", "proxyGenerating": "正在生成低清代理视频，首次预览请稍候…", "proxyGeneratingStatus": "正在生成低清预览：{name}", "proxyReady": "低清预览已就绪：{name}", "proxyFailed": "预览生成失败：{error}", "previewFailed": "预览失败：{error}", "noClipAtPlayhead": "红色播放头当前位置没有视频片段", "timelineAndSourceTime": "{timeline} · 源 {source}", "movePlayheadFirst": "请先把红色播放头移动到视频片段上",
+      "noClipInspector": "未选中片段：单击视频片段后可精确输入位置与裁剪值", "start": "起点", "sourceIn": "源入点", "clipDuration": "片段长度", "videoPurpose": "视频用途", "fixedGuide": "固定Guide", "editableReference": "可编辑参考", "boundaryOnly": "仅固定边界", "sourceAudioOn": "✓ 原声参考开启", "sourceAudioOff": "⊘ 原声参考关闭", "noSourceAudio": "— 无原声",
+      "editableModeStatus": "可编辑参考：不固定原人物", "boundaryModeStatus": "仅固定首尾边界帧", "fixedGuideStatus": "固定Guide：逐帧保留原画面", "dragReorder": "拖拽调整参考顺序", "imageOrderUpdated": "图片参考顺序已更新", "audioOrderUpdated": "音频参考顺序已更新",
+      "segmentsCreated": "已建立 {count} 个素材分段；请把图片和音频拖入对应段", "segmentsDisabled": "已关闭素材分段；将继续使用全部图片和音频", "segmentAssetTitle": "拖动调整本段顺序，或拖到其他分段复用", "segmentTitle": "第 {index} 段", "segmentPromptMatch": "匹配提示词序号 {index} · 本段编号从 1 开始", "segmentImages": "参考图片（拖入此处）", "segmentAudio": "参考音频（拖入此处）", "segmentUpdated": "第 {index} 段素材已更新", "segmentOrderUpdated": "第 {index} 段素材顺序已更新",
+      "normalVideoRefs": "普通参考视频 <Video 1..{count}>", "noNormalVideoRefs": "无普通视频参考", "independentPictures": "独立图片 <Picture 1..{count}>", "noIndependentPictures": "无独立图片", "nativeFixed": "原生固定 {count}段", "boundaryFixed": "边界固定 {count}段", "guideSummary": "{parts}/{frames}帧", "gapGuide": "空隙首尾 Guide {count}帧", "noFixedGuide": "无固定 Guide",
+      "standaloneAudioRefs": "独立音频 <Audio 1..{count}>", "noStandaloneAudio": "无独立音频", "videoAudioDisabled": "视频原声：参考已关闭", "pairedVideoAudio": "视频原声 <Audio {start}..{end}>", "noVideoAudioLabels": "无视频原声标签", "segmentFilterSummary": "素材分段 {count} 段（按提示词序号筛选）", "noSegmentFilter": "未启用素材分段",
+      "playheadInsideClip": "播放头需在所选片段内部", "noMatchingGap": "当前视频片段之间没有可匹配的空隙", "selectionMatchedGap": "生成选区已匹配空隙：{duration} 秒", "maxImages": "图片最多 9 张", "maxAudio": "独立音频最多 3 段", "emptyFile": "文件为空", "tooLarge": "文件超过插件 512 MiB 安全上限", "uploading": "正在通过 ComfyUI 上传 {name}", "uploadSizeHint": "；请调整 ComfyUI 的 --max-upload-size 后重启", "uploadFailed": "ComfyUI 上传失败：HTTP {status}{hint}", "checking": "正在检查 {name}", "mediaCheckFailed": "媒体检查失败：HTTP {status}", "noVideoTrack": "上传的文件不包含视频轨", "noAudioTrack": "上传的文件不包含音频轨", "addedFile": "已添加 {name}", "failed": "失败：{error}"
+    }
+  }
+}

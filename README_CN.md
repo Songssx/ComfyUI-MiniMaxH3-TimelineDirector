@@ -5,7 +5,7 @@
 ## 核心能力：轻量级无限时长视频生成
 
 插件可以把任意目标时长拆成多个连续片段，在一次 ComfyUI 执行中自动完成逐段生成、
-上一段 AV Latent 尾部续接、`0→1` 线性时间遮罩、重叠帧去除以及最终音画合并。
+所有分段使用同一个种子、上一段 AV Latent 尾部续接、固定的 `0→1` 线性时间遮罩、重叠帧去除以及最终音画合并。
 只需增加分段数量即可继续延长视频，不依赖已被关闭的通用 Loop PR，也不需要在画布上
 手工复制多套采样节点。实际可生成长度只受本机显存、内存、磁盘空间及 ComfyUI 单次执行能力限制。
 
@@ -80,6 +80,9 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 重启 ComfyUI 后，搜索 `MiniMax H3` 即可找到节点。
 
+插件以英文作为基础 UI，并通过 ComfyUI 官方本地化机制提供简体中文。它会跟随 ComfyUI
+设置中选择的界面语言；切换语言后请刷新前端或重启 ComfyUI。
+
 ### 环境要求
 
 - 较新的 ComfyUI，包含原生 MiniMax H3 节点；使用固定 Guide 时还需 `MiniMaxH3AddGuide`。
@@ -121,7 +124,8 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 `MiniMax H3 有限分段展开`只解析提示词、校验段数并生成规划，不含采样。将其输出连接到
 `MiniMax H3 有限分段采样`后，插件会生成普通无环执行图，完成逐段选材、直接 AV Latent
-续接、线性时间遮罩、重叠去除和顺序合并；不依赖 ComfyUI 的通用 Loop 节点。
+续接、固定的 `0→1` 时间遮罩、重叠去除和顺序合并；所有分段使用采样节点上的同一个种子，
+不依赖 ComfyUI 的通用 Loop 节点。
 
 [下载有限分段工作流](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
 [使用说明](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
@@ -148,7 +152,8 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 ### 有限分段直接 Latent 续写
 
 有限分段采样会把上一段 sampled AV Latent 的尾部直接放到下一段开头，避开
-`RGB Decode → VAE Encode` 往返，并按重叠帧生成 `0→1` 线性时间噪声遮罩。旧的
+`RGB Decode → VAE Encode` 往返。重叠区始终使用 `0→1` 线性时间噪声遮罩，所有分段
+始终使用采样节点设置的同一个种子，重叠区之后保持为 1。旧的
 `循环分段提示词`、`Latent 循环续段`、`循环片段去重`以及对 PR #15923 的依赖已经移除。
 
 ## 致谢与参考

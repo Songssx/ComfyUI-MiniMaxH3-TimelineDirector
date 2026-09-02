@@ -3,8 +3,71 @@ import { api } from "/scripts/api.js";
 
 const TIMELINE_NODE_NAMES = new Set(["MiniMaxH3TimelinePlanner", "MiniMaxH3TimelineDirector"]);
 const STYLE_ID = "m3td-style";
-const CHUNK_SIZE = 4 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
+const UPLOAD_SUBFOLDER = "minimax_h3_timeline_director";
 const DIRECTOR_HEIGHT = 674;
+
+const TIMELINE_EN = {
+  brandPlanner: "MiniMax H3 Material Planner", brandDirector: "MiniMax H3 Timeline Director (Compatibility)",
+  addVideo: "＋ Video", addImage: "＋ Image", addAudio: "＋ Audio", splitAtPlayhead: "✂ Split at Playhead", deleteClip: "Delete Clip", ready: "Ready",
+  selectionStart: "Selection start", referenceDuration: "Reference duration", zoom: "Zoom", fitAll: "Fit all", matchNearestGap: "Match nearest gap",
+  materialSegments: "Material segments", updateSegments: "Update segments", timelineHelp: "Drag clips/playhead · Edge snapping · Selection duration = generation duration",
+  referenceVideo: "Reference video", videoAudio: "Video audio", off: "Off", on: "On", noClipSelected: "No clip selected",
+  previewEmpty: "Move the red playhead over a video clip to preview that position", previewTitle: "Low-resolution monitor · up to 480×270 / 12 fps",
+  noPreviewVideo: "No video is available for preview", playPreview: "▶ Play preview", pausePreview: "❚❚ Pause preview",
+  previewNote: "Preview uses a low-resolution silent proxy only. Generation reads the original video; the track switch controls whether source audio is referenced.",
+  independentImages: "Independent reference images ({count}/9)", independentAudio: "Independent reference audio ({count}/3)",
+  dragSortPictures: "Drag to reorder · <Picture i>", dragSortAudio: "Drag to reorder · <Audio j>", assignByPrompt: "Assign materials by prompt index",
+  segmentNote: "Drag from the libraries above; Picture / Audio numbering restarts at 1 for each segment", promptLabels: "Prompt labels:",
+  audioReferenceOn: "Video source-audio reference enabled", audioReferenceOff: "Video source-audio reference disabled",
+  externalDrop: "Drop to import video, reference images, or reference audio", uploadBusy: "A file is still uploading; try again shortly",
+  unsupportedFile: "Unsupported file. Drop an image, audio file, or video.", importedSome: "Imported {accepted} files; ignored {rejected} unsupported files",
+  disableVideoAudio: "Click to keep the video reference but omit its source audio", enableVideoAudio: "Click to restore source-audio reference",
+  moveGenerationRegion: "Move generation region", adjustGenerationStart: "Adjust generation-region start", adjustGenerationEnd: "Adjust generation-region end", movePlayhead: "Move playhead",
+  frames: "{count} frames", editable: "EDIT replaceable", clipMeta: "{duration}s · source {source}s",
+  proxyGenerating: "Generating a low-resolution proxy; the first preview may take a moment…", proxyGeneratingStatus: "Generating low-resolution preview: {name}",
+  proxyReady: "Low-resolution preview ready: {name}", proxyFailed: "Preview generation failed: {error}", previewFailed: "Preview failed: {error}",
+  noClipAtPlayhead: "No video clip at the red playhead", timelineAndSourceTime: "{timeline} · source {source}", movePlayheadFirst: "Move the red playhead onto a video clip first",
+  noClipInspector: "No clip selected. Click a video clip to enter its position and trim values precisely.", start: "Start", sourceIn: "Source in", clipDuration: "Clip duration",
+  videoPurpose: "Video purpose", fixedGuide: "Fixed Guide", editableReference: "Editable reference", boundaryOnly: "Fixed boundaries only",
+  sourceAudioOn: "✓ Source-audio reference on", sourceAudioOff: "⊘ Source-audio reference off", noSourceAudio: "— No source audio",
+  editableModeStatus: "Editable reference: the original subject is not fixed", boundaryModeStatus: "Only the first/last boundary frames are fixed", fixedGuideStatus: "Fixed Guide: preserve the original image frame by frame",
+  dragReorder: "Drag to reorder references", imageOrderUpdated: "Image reference order updated", audioOrderUpdated: "Audio reference order updated",
+  segmentsCreated: "Created {count} material segments. Drag images and audio into the corresponding segment.", segmentsDisabled: "Material segmentation disabled; all images and audio will be used.",
+  segmentAssetTitle: "Drag to reorder within this segment, or reuse in another segment", segmentTitle: "Segment {index}", segmentPromptMatch: "Matches prompt index {index} · numbering starts at 1",
+  segmentImages: "Reference images (drop here)", segmentAudio: "Reference audio (drop here)", segmentUpdated: "Segment {index} materials updated", segmentOrderUpdated: "Segment {index} material order updated",
+  normalVideoRefs: "Standard video references <Video 1..{count}>", noNormalVideoRefs: "No standard video references", independentPictures: "Independent images <Picture 1..{count}>", noIndependentPictures: "No independent images",
+  nativeFixed: "native fixed {count} segment(s)", boundaryFixed: "boundary fixed {count} segment(s)", guideSummary: "{parts}/{frames} frames", gapGuide: "gap boundary Guide {count} frames", noFixedGuide: "No fixed Guide",
+  standaloneAudioRefs: "Independent audio <Audio 1..{count}>", noStandaloneAudio: "No independent audio", videoAudioDisabled: "Video audio: reference disabled", pairedVideoAudio: "Video audio <Audio {start}..{end}>", noVideoAudioLabels: "No video-audio labels",
+  segmentFilterSummary: "{count} material segments (filtered by prompt index)", noSegmentFilter: "Material segmentation not enabled",
+  playheadInsideClip: "The playhead must be inside the selected clip", noMatchingGap: "There is no gap between current video clips", selectionMatchedGap: "Generation selection matched a {duration}-second gap",
+  maxImages: "Up to 9 images", maxAudio: "Up to 3 independent audio clips", emptyFile: "The file is empty", tooLarge: "The file exceeds the plug-in's 512 MiB safety limit",
+  uploading: "Uploading {name} through ComfyUI", uploadSizeHint: "; adjust ComfyUI --max-upload-size and restart", uploadFailed: "ComfyUI upload failed: HTTP {status}{hint}", checking: "Inspecting {name}", mediaCheckFailed: "Media inspection failed: HTTP {status}",
+  noVideoTrack: "The uploaded file contains no video track", noAudioTrack: "The uploaded file contains no audio track", addedFile: "Added {name}", failed: "Failed: {error}",
+};
+
+let timelineMessages = { ...TIMELINE_EN };
+let timelineLocalePromise;
+const activeLocale = () => {
+  const raw = app.ui?.settings?.getSettingValue?.("Comfy.Locale") || app.ui?.settings?.getSettingValue?.("Comfy.Locale.Language") || navigator.language || "en";
+  return String(raw).toLowerCase().startsWith("zh") ? "zh" : "en";
+};
+async function ensureTimelineLocale() {
+  if (!timelineLocalePromise) timelineLocalePromise = (async () => {
+    try {
+      const response = await api.fetchApi("/i18n");
+      if (!response.ok) return;
+      const translations = await response.json();
+      const messages = translations?.[activeLocale()]?.MiniMaxH3TimelineDirector?.timeline;
+      if (messages && typeof messages === "object") timelineMessages = { ...TIMELINE_EN, ...messages };
+    } catch (error) { console.warn("[MiniMaxH3TimelineDirector] Unable to load localization", error); }
+  })();
+  return timelineLocalePromise;
+}
+function tr(key, values = {}) {
+  const message = timelineMessages[key] ?? TIMELINE_EN[key] ?? key;
+  return String(message).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? `{${name}}`);
+}
 
 function installStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -155,6 +218,18 @@ const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(val
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+async function responseJSON(response) {
+  try { return await response.json(); }
+  catch (_) { return {}; }
+}
+
+function uploadedRelativePath(payload) {
+  const name = String(payload?.name || "").replace(/[\\/]+/g, "_");
+  const subfolder = String(payload?.subfolder || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+  if (!name) throw new Error("ComfyUI did not return an uploaded filename");
+  return subfolder ? `${subfolder}/${name}` : name;
+}
+
 function reorderById(items, draggedId, targetId, after = false) {
   const sourceIndex = items.findIndex(item => item.id === draggedId);
   if (sourceIndex < 0 || draggedId === targetId) return false;
@@ -243,7 +318,7 @@ function viewURL(relative) {
 }
 
 class TimelineDirectorUI {
-  constructor(node, root, widget, brand = "MiniMax H3 素材规划台") {
+  constructor(node, root, widget, brand = "MiniMax H3 Material Planner") {
     this.node = node;
     this.root = root;
     this.widget = widget;
@@ -415,48 +490,48 @@ class TimelineDirectorUI {
     this.root.innerHTML = `
       <div class="m3td-head">
         <span class="m3td-brand">${esc(this.brand)}</span>
-        <button class="m3td-btn" data-action="video">＋ 视频</button>
-        <button class="m3td-btn" data-action="image">＋ 图片</button>
-        <button class="m3td-btn" data-action="audio">＋ 音频</button>
-        <button class="m3td-btn" data-action="split">✂ 在播放头分段</button>
-        <button class="m3td-btn danger" data-action="delete">删除片段</button>
-        <span class="m3td-spacer"></span><span class="m3td-status">就绪</span>
+        <button class="m3td-btn" data-action="video">${esc(tr("addVideo"))}</button>
+        <button class="m3td-btn" data-action="image">${esc(tr("addImage"))}</button>
+        <button class="m3td-btn" data-action="audio">${esc(tr("addAudio"))}</button>
+        <button class="m3td-btn" data-action="split">${esc(tr("splitAtPlayhead"))}</button>
+        <button class="m3td-btn danger" data-action="delete">${esc(tr("deleteClip"))}</button>
+        <span class="m3td-spacer"></span><span class="m3td-status">${esc(tr("ready"))}</span>
         <span class="m3td-progress"><i></i></span>
       </div>
       <div class="m3td-settings">
-        <label class="m3td-field">选区起点 <input data-field="selectionStart" type="number" min="0" step="0.04"></label>
-        <label class="m3td-field">参考时长 <input data-field="selectionDuration" type="number" min="0.21" step="0.04"></label>
-        <label class="m3td-field">缩放 <input data-field="zoom" type="range" min="24" max="180" step="4"></label>
-        <button class="m3td-btn" data-action="fit">适应全部</button>
-        <button class="m3td-btn" data-action="fitGap">匹配最近空隙</button>
-        <label class="m3td-field">素材分段 <input data-field="segmentCount" type="number" min="0" max="64" step="1"></label>
-        <button class="m3td-btn" data-action="applySegments">更新分段</button>
-        <span class="m3td-help">拖动片段/播放头 · 边缘自动吸附 · 选区时长=生成时长</span>
+        <label class="m3td-field">${esc(tr("selectionStart"))} <input data-field="selectionStart" type="number" min="0" step="0.04"></label>
+        <label class="m3td-field">${esc(tr("referenceDuration"))} <input data-field="selectionDuration" type="number" min="0.21" step="0.04"></label>
+        <label class="m3td-field">${esc(tr("zoom"))} <input data-field="zoom" type="range" min="24" max="180" step="4"></label>
+        <button class="m3td-btn" data-action="fit">${esc(tr("fitAll"))}</button>
+        <button class="m3td-btn" data-action="fitGap">${esc(tr("matchNearestGap"))}</button>
+        <label class="m3td-field">${esc(tr("materialSegments"))} <input data-field="segmentCount" type="number" min="0" max="64" step="1"></label>
+        <button class="m3td-btn" data-action="applySegments">${esc(tr("updateSegments"))}</button>
+        <span class="m3td-help">${esc(tr("timelineHelp"))}</span>
       </div>
       <div class="m3td-timeline-shell">
-        <div class="m3td-labels"><div class="m3td-track-label">参考视频</div><div class="m3td-track-label audio"><span>视频原声</span><button class="m3td-audio-toggle" data-action="videoAudioToggle" type="button">关闭</button></div></div>
+        <div class="m3td-labels"><div class="m3td-track-label">${esc(tr("referenceVideo"))}</div><div class="m3td-track-label audio"><span>${esc(tr("videoAudio"))}</span><button class="m3td-audio-toggle" data-action="videoAudioToggle" type="button">${esc(tr("off"))}</button></div></div>
         <div class="m3td-viewport"><div class="m3td-stage"></div></div>
       </div>
-      <div class="m3td-inspector"><span>未选中片段</span></div>
+      <div class="m3td-inspector"><span>${esc(tr("noClipSelected"))}</span></div>
       <div class="m3td-preview">
-        <div class="m3td-preview-screen"><video class="m3td-preview-video" muted playsinline preload="metadata"></video><div class="m3td-preview-empty">拖动红色播放头到视频片段上，即可查看当前位置画面</div></div>
+        <div class="m3td-preview-screen"><video class="m3td-preview-video" muted playsinline preload="metadata"></video><div class="m3td-preview-empty">${esc(tr("previewEmpty"))}</div></div>
         <div class="m3td-preview-side">
-          <div class="m3td-preview-title">低清视频监看 · 最高 480×270 / 12fps</div>
+          <div class="m3td-preview-title">${esc(tr("previewTitle"))}</div>
           <div class="m3td-preview-time">00:00.00</div>
-          <div class="m3td-preview-name">当前没有可预览的视频</div>
-          <button class="m3td-btn" data-action="previewPlay">▶ 播放预览</button>
-          <div class="m3td-preview-note">仅预览使用低清无声代理；最终生成读取原始视频，视频原声是否参与参考由轨道开关控制。</div>
+          <div class="m3td-preview-name">${esc(tr("noPreviewVideo"))}</div>
+          <button class="m3td-btn" data-action="previewPlay">${esc(tr("playPreview"))}</button>
+          <div class="m3td-preview-note">${esc(tr("previewNote"))}</div>
         </div>
       </div>
       <div class="m3td-assets">
-        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考图片（0/9）</span><span>拖拽排序 · &lt;Picture i&gt;</span></div><div class="m3td-bin-list" data-bin="images"></div></section>
-        <section class="m3td-bin"><div class="m3td-bin-title"><span>独立参考音频（0/3）</span><span>拖拽排序 · &lt;Audio j&gt;</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
+        <section class="m3td-bin"><div class="m3td-bin-title"><span>${esc(tr("independentImages",{count:0}))}</span><span>${esc(tr("dragSortPictures"))}</span></div><div class="m3td-bin-list" data-bin="images"></div></section>
+        <section class="m3td-bin"><div class="m3td-bin-title"><span>${esc(tr("independentAudio",{count:0}))}</span><span>${esc(tr("dragSortAudio"))}</span></div><div class="m3td-bin-list" data-bin="audios"></div></section>
       </div>
       <div class="m3td-segments" hidden>
-        <div class="m3td-segment-head"><strong>按提示词序号分配素材</strong><span class="m3td-segment-note">从上方素材库拖入；每段 Picture / Audio 都从 1 重新编号</span></div>
+        <div class="m3td-segment-head"><strong>${esc(tr("assignByPrompt"))}</strong><span class="m3td-segment-note">${esc(tr("segmentNote"))}</span></div>
         <div class="m3td-segment-list"></div>
       </div>
-      <div class="m3td-foot"><strong>提示词编号：</strong><span class="m3td-tags"></span></div>
+      <div class="m3td-foot"><strong>${esc(tr("promptLabels"))}</strong><span class="m3td-tags"></span></div>
       <input hidden data-upload="video" type="file" accept="video/*" multiple>
       <input hidden data-upload="image" type="file" accept="image/*" multiple>
       <input hidden data-upload="audio" type="file" accept="audio/*" multiple>
@@ -484,13 +559,13 @@ class TimelineDirectorUI {
       event.stopPropagation();
       this.state.videoAudioEnabled = !this.state.videoAudioEnabled;
       this.sync(); this.render();
-      this.setStatus(this.state.videoAudioEnabled ? "视频原声参考已开启" : "视频原声参考已关闭");
+      this.setStatus(tr(this.state.videoAudioEnabled ? "audioReferenceOn" : "audioReferenceOff"));
     };
     this.previewPlay.onclick = () => this.togglePreviewPlayback();
-    this.previewVideo.onplay = () => { this.previewPlay.textContent = "❚❚ 暂停预览"; };
-    this.previewVideo.onpause = () => { this.previewPlay.textContent = "▶ 播放预览"; };
+    this.previewVideo.onplay = () => { this.previewPlay.textContent = tr("pausePreview"); };
+    this.previewVideo.onpause = () => { this.previewPlay.textContent = tr("playPreview"); };
     this.previewVideo.ontimeupdate = () => this.followPreviewPlayback();
-    this.previewVideo.onended = () => { this.previewPlay.textContent = "▶ 播放预览"; };
+    this.previewVideo.onended = () => { this.previewPlay.textContent = tr("playPreview"); };
     for (const input of this.root.querySelectorAll("[data-upload]")) {
       input.onchange = async () => {
         const files = Array.from(input.files || []);
@@ -567,7 +642,7 @@ class TimelineDirectorUI {
     const showDropTarget = event => {
       if (!stopComfyDrop(event)) return;
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
-      this.root.dataset.dropLabel = "释放以导入视频、参考图片或参考音频";
+      this.root.dataset.dropLabel = tr("externalDrop");
       this.root.classList.add("external-file-drag");
     };
     const hideDropTarget = event => {
@@ -581,12 +656,12 @@ class TimelineDirectorUI {
       const files = Array.from(event.dataTransfer?.files || []);
       stopComfyDrop(event);
       this.root.classList.remove("external-file-drag");
-      if (this.uploading) { this.setStatus("当前文件仍在上传，请稍后再拖入"); return; }
+      if (this.uploading) { this.setStatus(tr("uploadBusy")); return; }
       const supported = files.map(file => ({file, kind:uploadKindForFile(file)})).filter(item => item.kind);
       const rejected = files.length - supported.length;
-      if (!supported.length) { this.setStatus("不支持该文件；请拖入图片、音频或视频"); return; }
+      if (!supported.length) { this.setStatus(tr("unsupportedFile")); return; }
       for (const item of supported) await this.addFile(item.kind, item.file);
-      if (rejected) this.setStatus(`已导入 ${supported.length} 个文件，忽略 ${rejected} 个不支持的文件`);
+      if (rejected) this.setStatus(tr("importedSome", {accepted:supported.length,rejected}));
     };
     this.externalDropHandlers = {showDropTarget, hideDropTarget, receiveFiles};
     this.root.addEventListener("dragenter", showDropTarget, true);
@@ -607,9 +682,9 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-field="zoom"]').value = this.zoom;
     this.root.querySelector('[data-field="segmentCount"]').value = this.segmentCountDraft;
     if (this.videoAudioToggle) {
-      this.videoAudioToggle.textContent = this.state.videoAudioEnabled ? "关闭" : "开启";
+      this.videoAudioToggle.textContent = tr(this.state.videoAudioEnabled ? "off" : "on");
       this.videoAudioToggle.classList.toggle("off", !this.state.videoAudioEnabled);
-      this.videoAudioToggle.title = this.state.videoAudioEnabled ? "点击后视频仍参与参考，但不传入视频原声" : "点击后恢复视频原声参考";
+      this.videoAudioToggle.title = tr(this.state.videoAudioEnabled ? "disableVideoAudio" : "enableVideoAudio");
       this.videoAudioToggle.setAttribute("aria-pressed", String(this.state.videoAudioEnabled));
     }
     this.renderTimeline();
@@ -674,9 +749,9 @@ class TimelineDirectorUI {
     for (const clip of this.state.videoClips) if (clip.hasAudio) html += this.audioClipHTML(clip);
     html += '</div>';
     const sel = this.state.selection;
-    html += `<div class="m3td-selection" data-role="selection" style="left:${sel.start*this.zoom}px;width:${Math.max(8,sel.duration*this.zoom)}px"><b class="m3td-sel-move" data-edge="move" title="拖动生成区域">GEN</b><i class="m3td-sel-handle left" data-edge="left" title="调整生成区域起点"></i><i class="m3td-sel-handle right" data-edge="right" title="调整生成区域终点"></i></div>`;
+    html += `<div class="m3td-selection" data-role="selection" style="left:${sel.start*this.zoom}px;width:${Math.max(8,sel.duration*this.zoom)}px"><b class="m3td-sel-move" data-edge="move" title="${esc(tr("moveGenerationRegion"))}">GEN</b><i class="m3td-sel-handle left" data-edge="left" title="${esc(tr("adjustGenerationStart"))}"></i><i class="m3td-sel-handle right" data-edge="right" title="${esc(tr("adjustGenerationEnd"))}"></i></div>`;
     html += `<div class="m3td-snap-guide" style="left:${(this.snapGuide ?? 0)*this.zoom}px;${this.snapGuide == null ? "display:none" : ""}"></div>`;
-    html += `<div class="m3td-playhead" data-role="playhead" title="拖动播放头" style="left:${this.playhead*this.zoom}px"></div>`;
+    html += `<div class="m3td-playhead" data-role="playhead" title="${esc(tr("movePlayhead"))}" style="left:${this.playhead*this.zoom}px"></div>`;
     this.stage.innerHTML = html;
     for (const el of this.stage.querySelectorAll(".m3td-clip")) {
       const clip = this.state.videoClips.find(c => c.id === el.dataset.id);
@@ -692,12 +767,12 @@ class TimelineDirectorUI {
     const videoIndex = plan.videoPieces.findIndex(piece => piece.clipId === clip.id);
     const guide = plan.guidePieces.find(piece => piece.clipId === clip.id);
     const mode = clip.referenceMode || "guide";
-    const modeTag = guide ? `<span class="m3td-clip-ref ${mode === "boundary" ? "boundary" : "guide"}">${mode === "boundary" ? `EDGE ${guide.frames}帧` : `GUIDE ${guide.frames}帧`}</span>` : (mode === "edit" && videoIndex >= 0 ? `<span class="m3td-clip-ref edit">EDIT 可替换</span>` : "");
+    const modeTag = guide ? `<span class="m3td-clip-ref ${mode === "boundary" ? "boundary" : "guide"}">${mode === "boundary" ? `EDGE ${esc(tr("frames",{count:guide.frames}))}` : `GUIDE ${esc(tr("frames",{count:guide.frames}))}`}</span>` : (mode === "edit" && videoIndex >= 0 ? `<span class="m3td-clip-ref edit">${esc(tr("editable"))}</span>` : "");
     const refTag = `${videoIndex >= 0 ? `<span class="m3td-clip-ref">&lt;Video ${videoIndex+1}&gt;</span>` : ""}${modeTag}`;
     return `<div class="m3td-clip ${clip.id === this.selectedId ? "selected" : ""}" data-id="${esc(clip.id)}" style="left:${left}px;width:${width}px">
       <video muted preload="metadata" src="${esc(viewURL(clip.file))}"></video><div class="m3td-clip-shade"></div>
       <i class="m3td-handle left" data-edge="left"></i><i class="m3td-handle right" data-edge="right"></i>
-      <span class="m3td-clip-name">${esc(clip.name)}</span>${refTag}<span class="m3td-clip-meta">${clip.duration.toFixed(2)}s · 源 ${clip.trimStart.toFixed(2)}s</span></div>`;
+      <span class="m3td-clip-name">${esc(clip.name)}</span>${refTag}<span class="m3td-clip-meta">${esc(tr("clipMeta",{duration:clip.duration.toFixed(2),source:clip.trimStart.toFixed(2)}))}</span></div>`;
   }
 
   audioClipHTML(clip) {
@@ -745,20 +820,23 @@ class TimelineDirectorUI {
     if (clip.proxy) return clip.proxy;
     if (this.proxyRequests.has(clip.id)) return this.proxyRequests.get(clip.id);
     const request = (async () => {
-      this.previewEmpty.textContent = "正在生成低清代理视频，首次预览请稍候…";
-      this.setStatus(`正在生成低清预览：${clip.name}`);
-      const params = new URLSearchParams({filename: clip.file});
-      const response = await api.fetchApi(`/minimax_h3_timeline/preview_proxy?${params.toString()}`);
-      const payload = await response.json();
+      this.previewEmpty.textContent = tr("proxyGenerating");
+      this.setStatus(tr("proxyGeneratingStatus",{name:clip.name}));
+      const response = await api.fetchApi("/minimax_h3_timeline/preview_proxy", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({filename:clip.file}),
+      });
+      const payload = await responseJSON(response);
       if (!response.ok || payload.error) throw new Error(payload.error || `HTTP ${response.status}`);
       clip.proxy = payload.proxy;
       this.sync();
-      this.setStatus(`低清预览已就绪：${clip.name}`);
+      this.setStatus(tr("proxyReady",{name:clip.name}));
       return clip.proxy;
     })().catch(error => {
       console.error("[MiniMaxH3TimelineDirector] preview proxy", error);
-      this.previewEmpty.textContent = `预览生成失败：${error.message}`;
-      this.setStatus(`预览失败：${error.message}`);
+      this.previewEmpty.textContent = tr("proxyFailed",{error:error.message});
+      this.setStatus(tr("previewFailed",{error:error.message}));
       throw error;
     }).finally(() => this.proxyRequests.delete(clip.id));
     this.proxyRequests.set(clip.id, request);
@@ -771,14 +849,14 @@ class TimelineDirectorUI {
       this.previewVideo.pause();
       this.previewVideo.style.display = "none";
       this.previewEmpty.style.display = "block";
-      this.previewEmpty.textContent = "红色播放头当前位置没有视频片段";
-      this.previewName.textContent = "当前没有可预览的视频";
+      this.previewEmpty.textContent = tr("noClipAtPlayhead");
+      this.previewName.textContent = tr("noPreviewVideo");
       this.previewTime.textContent = this.formatPreviewTime(this.playhead);
       this.previewClipId = null;
       return;
     }
     const sourceTime = this.previewSourceTime(clip);
-    this.previewTime.textContent = `${this.formatPreviewTime(this.playhead)}  ·  源 ${this.formatPreviewTime(sourceTime)}`;
+    this.previewTime.textContent = tr("timelineAndSourceTime",{timeline:this.formatPreviewTime(this.playhead),source:this.formatPreviewTime(sourceTime)});
     this.previewName.textContent = clip.name;
     if (!clip.proxy) {
       this.previewVideo.style.display = "none";
@@ -813,7 +891,7 @@ class TimelineDirectorUI {
   async togglePreviewPlayback() {
     if (!this.previewVideo.paused) { this.previewVideo.pause(); return; }
     const clip = this.clipAtPlayhead();
-    if (!clip) { this.setStatus("请先把红色播放头移动到视频片段上"); return; }
+    if (!clip) { this.setStatus(tr("movePlayheadFirst")); return; }
     try {
       await this.ensurePreviewProxy(clip);
       await this.updatePreview(true);
@@ -823,7 +901,7 @@ class TimelineDirectorUI {
       this.previewVideo.currentTime = clamp(this.previewSourceTime(clip), 0, Math.max(0, this.previewVideo.duration - .01));
       await this.previewVideo.play();
     } catch (error) {
-      this.setStatus(`无法播放预览：${error.message}`);
+      this.setStatus(tr("previewFailed",{error:error.message}));
     }
   }
 
@@ -838,7 +916,7 @@ class TimelineDirectorUI {
     } else {
       this.playhead = clamp(clip.start + this.previewVideo.currentTime - clip.trimStart, clip.start, clip.start + clip.duration);
     }
-    this.previewTime.textContent = `${this.formatPreviewTime(this.playhead)}  ·  源 ${this.formatPreviewTime(this.previewVideo.currentTime)}`;
+    this.previewTime.textContent = tr("timelineAndSourceTime",{timeline:this.formatPreviewTime(this.playhead),source:this.formatPreviewTime(this.previewVideo.currentTime)});
     this.scheduleDragVisualUpdate();
   }
 
@@ -927,7 +1005,7 @@ class TimelineDirectorUI {
         clipElement.style.left = `${clip.start * this.zoom}px`;
         clipElement.style.width = `${Math.max(10, clip.duration * this.zoom)}px`;
         const meta = clipElement.querySelector(".m3td-clip-meta");
-        if (meta) meta.textContent = `${clip.duration.toFixed(2)}s · 源 ${clip.trimStart.toFixed(2)}s`;
+        if (meta) meta.textContent = tr("clipMeta",{duration:clip.duration.toFixed(2),source:clip.trimStart.toFixed(2)});
       }
       const wave = Array.from(this.stage.querySelectorAll("canvas[data-wave]"))
         .find(element => element.dataset.wave === String(clip.id));
@@ -1020,13 +1098,13 @@ class TimelineDirectorUI {
 
   renderInspector() {
     const clip = this.state.videoClips.find(c => c.id === this.selectedId);
-    if (!clip) { this.inspector.innerHTML = '<span>未选中片段：单击视频片段后可精确输入位置与裁剪值</span>'; return; }
+    if (!clip) { this.inspector.innerHTML = `<span>${esc(tr("noClipInspector"))}</span>`; return; }
     this.inspector.innerHTML = `<strong title="${esc(clip.name)}">${esc(clip.name)}</strong>
-      <label class="m3td-field">起点 <input data-edit="start" type="number" min="0" step="0.04" value="${clip.start.toFixed(2)}"></label>
-      <label class="m3td-field">源入点 <input data-edit="trimStart" type="number" min="0" step="0.04" value="${clip.trimStart.toFixed(2)}"></label>
-      <label class="m3td-field">片段长度 <input data-edit="duration" type="number" min="0.21" step="0.04" value="${clip.duration.toFixed(2)}"></label>
-      <label class="m3td-field">视频用途 <select data-mode><option value="guide" ${clip.referenceMode === "guide" ? "selected" : ""}>固定Guide</option><option value="edit" ${clip.referenceMode === "edit" ? "selected" : ""}>可编辑参考</option><option value="boundary" ${clip.referenceMode === "boundary" ? "selected" : ""}>仅固定边界</option></select></label>
-      <span>${clip.hasAudio ? (this.state.videoAudioEnabled ? "✓ 原声参考开启" : "⊘ 原声参考关闭") : "— 无原声"}</span>`;
+      <label class="m3td-field">${esc(tr("start"))} <input data-edit="start" type="number" min="0" step="0.04" value="${clip.start.toFixed(2)}"></label>
+      <label class="m3td-field">${esc(tr("sourceIn"))} <input data-edit="trimStart" type="number" min="0" step="0.04" value="${clip.trimStart.toFixed(2)}"></label>
+      <label class="m3td-field">${esc(tr("clipDuration"))} <input data-edit="duration" type="number" min="0.21" step="0.04" value="${clip.duration.toFixed(2)}"></label>
+      <label class="m3td-field">${esc(tr("videoPurpose"))} <select data-mode><option value="guide" ${clip.referenceMode === "guide" ? "selected" : ""}>${esc(tr("fixedGuide"))}</option><option value="edit" ${clip.referenceMode === "edit" ? "selected" : ""}>${esc(tr("editableReference"))}</option><option value="boundary" ${clip.referenceMode === "boundary" ? "selected" : ""}>${esc(tr("boundaryOnly"))}</option></select></label>
+      <span>${esc(clip.hasAudio ? tr(this.state.videoAudioEnabled ? "sourceAudioOn" : "sourceAudioOff") : tr("noSourceAudio"))}</span>`;
     for (const input of this.inspector.querySelectorAll("input[data-edit]")) input.onchange = () => {
       const key=input.dataset.edit, value=Math.max(0,num(input.value));
       if (key === "duration") clip.duration=clamp(value,5/24,Math.max(5/24,clip.sourceDuration-clip.trimStart));
@@ -1036,7 +1114,7 @@ class TimelineDirectorUI {
     };
     this.inspector.querySelector("select[data-mode]").onchange = event => {
       clip.referenceMode=event.target.value;
-      this.setStatus(clip.referenceMode === "edit" ? "可编辑参考：不固定原人物" : (clip.referenceMode === "boundary" ? "仅固定首尾边界帧" : "固定Guide：逐帧保留原画面"));
+      this.setStatus(tr(clip.referenceMode === "edit" ? "editableModeStatus" : (clip.referenceMode === "boundary" ? "boundaryModeStatus" : "fixedGuideStatus")));
       this.sync();this.render();
     };
   }
@@ -1044,14 +1122,14 @@ class TimelineDirectorUI {
   renderAssets() {
     const imageBin = this.root.querySelector('[data-bin="images"]');
     const audioBin = this.root.querySelector('[data-bin="audios"]');
-    this.root.querySelectorAll(".m3td-bin-title span:first-child")[0].textContent = `独立参考图片（${this.state.images.length}/9）`;
-    this.root.querySelectorAll(".m3td-bin-title span:first-child")[1].textContent = `独立参考音频（${this.state.audios.length}/3）`;
-    imageBin.innerHTML = this.state.images.map((a,i) => `<div class="m3td-asset" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="images" title="拖拽调整参考顺序"><img draggable="false" src="${esc(viewURL(a.file))}"><span class="m3td-asset-tag">&lt;Picture ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-image="${esc(a.id)}">×</button></div>`).join("");
-    audioBin.innerHTML = this.state.audios.map((a,i) => `<div class="m3td-asset audio" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="audios" title="拖拽调整参考顺序"><span class="m3td-asset-tag">&lt;Audio ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-audio="${esc(a.id)}">×</button></div>`).join("");
+    this.root.querySelectorAll(".m3td-bin-title span:first-child")[0].textContent = tr("independentImages",{count:this.state.images.length});
+    this.root.querySelectorAll(".m3td-bin-title span:first-child")[1].textContent = tr("independentAudio",{count:this.state.audios.length});
+    imageBin.innerHTML = this.state.images.map((a,i) => `<div class="m3td-asset" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="images" title="${esc(tr("dragReorder"))}"><img draggable="false" src="${esc(viewURL(a.file))}"><span class="m3td-asset-tag">&lt;Picture ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-image="${esc(a.id)}">×</button></div>`).join("");
+    audioBin.innerHTML = this.state.audios.map((a,i) => `<div class="m3td-asset audio" draggable="true" data-asset-id="${esc(a.id)}" data-asset-kind="audios" title="${esc(tr("dragReorder"))}"><span class="m3td-asset-tag">&lt;Audio ${i+1}&gt;</span><span class="m3td-asset-name">${esc(a.name)}</span><button draggable="false" class="m3td-asset-x" data-remove-audio="${esc(a.id)}">×</button></div>`).join("");
     for (const b of imageBin.querySelectorAll("[data-remove-image]")) b.onclick=e=>{e.stopPropagation();this.state.images=this.state.images.filter(a=>a.id!==b.dataset.removeImage);this.pruneSegmentAssignments();this.sync();this.render();};
     for (const b of audioBin.querySelectorAll("[data-remove-audio]")) b.onclick=e=>{e.stopPropagation();this.state.audios=this.state.audios.filter(a=>a.id!==b.dataset.removeAudio);this.pruneSegmentAssignments();this.sync();this.render();};
-    this.bindAssetReorder(imageBin,"images","图片");
-    this.bindAssetReorder(audioBin,"audios","音频");
+    this.bindAssetReorder(imageBin,"images","imageOrderUpdated");
+    this.bindAssetReorder(audioBin,"audios","audioOrderUpdated");
   }
 
   bindAssetReorder(bin, kind, label) {
@@ -1078,7 +1156,7 @@ class TimelineDirectorUI {
         e.preventDefault();const rect=card.getBoundingClientRect(),after=e.clientX>=rect.left+rect.width/2;
         const changed=reorderById(this.state[kind],this.assetDrag.id,card.dataset.assetId,after);
         this.assetDrag=null;clearMarkers();
-        if(changed){this.sync();this.render();this.setStatus(`${label}参考顺序已更新`);}
+        if(changed){this.sync();this.render();this.setStatus(tr(label));}
       };
       card.ondragend=()=>{this.assetDrag=null;clearMarkers();};
     }
@@ -1094,7 +1172,7 @@ class TimelineDirectorUI {
     this.segmentCountDraft=count;
     this.pruneSegmentAssignments();
     this.sync();this.render();
-    this.setStatus(count?`已建立 ${count} 个素材分段；请把图片和音频拖入对应段`:`已关闭素材分段；将继续使用全部图片和音频`);
+    this.setStatus(count?tr("segmentsCreated",{count}):tr("segmentsDisabled"));
   }
 
   pruneSegmentAssignments() {
@@ -1110,7 +1188,7 @@ class TimelineDirectorUI {
     const asset=this.state[kind].find(item=>String(item.id)===String(id));
     if(!asset)return "";
     const isImage=kind==="images";
-    return `<div class="m3td-asset ${isImage?"":"audio"}" draggable="true" data-segment-asset="${esc(id)}" data-segment-kind="${kind}" data-segment-index="${segmentIndex}" title="拖动调整本段顺序，或拖到其他分段复用">
+    return `<div class="m3td-asset ${isImage?"":"audio"}" draggable="true" data-segment-asset="${esc(id)}" data-segment-kind="${kind}" data-segment-index="${segmentIndex}" title="${esc(tr("segmentAssetTitle"))}">
       ${isImage?`<img draggable="false" src="${esc(viewURL(asset.file))}">`:""}
       <span class="m3td-asset-tag">&lt;${isImage?"Picture":"Audio"} ${localIndex+1}&gt;</span>
       <span class="m3td-asset-name">${esc(asset.name)}</span>
@@ -1123,10 +1201,10 @@ class TimelineDirectorUI {
     section.hidden=count<=0;
     if(count<=0){list.innerHTML="";return;}
     list.innerHTML=this.state.segmentConfig.segments.map((segment,index)=>`<section class="m3td-segment" data-segment="${index}">
-      <div class="m3td-segment-title"><strong>第 ${index+1} 段</strong><span>匹配提示词序号 ${index+1} · 本段编号从 1 开始</span></div>
+      <div class="m3td-segment-title"><strong>${esc(tr("segmentTitle",{index:index+1}))}</strong><span>${esc(tr("segmentPromptMatch",{index:index+1}))}</span></div>
       <div class="m3td-segment-bins">
-        <div class="m3td-segment-bin" data-segment-drop="images" data-segment-index="${index}"><label class="m3td-segment-bin-label">参考图片（拖入此处）</label><div class="m3td-segment-bin-list">${segment.images.map((id,i)=>this.segmentAssetHTML("images",id,i,index)).join("")}</div></div>
-        <div class="m3td-segment-bin" data-segment-drop="audios" data-segment-index="${index}"><label class="m3td-segment-bin-label">参考音频（拖入此处）</label><div class="m3td-segment-bin-list">${segment.audios.map((id,i)=>this.segmentAssetHTML("audios",id,i,index)).join("")}</div></div>
+        <div class="m3td-segment-bin" data-segment-drop="images" data-segment-index="${index}"><label class="m3td-segment-bin-label">${esc(tr("segmentImages"))}</label><div class="m3td-segment-bin-list">${segment.images.map((id,i)=>this.segmentAssetHTML("images",id,i,index)).join("")}</div></div>
+        <div class="m3td-segment-bin" data-segment-drop="audios" data-segment-index="${index}"><label class="m3td-segment-bin-label">${esc(tr("segmentAudio"))}</label><div class="m3td-segment-bin-list">${segment.audios.map((id,i)=>this.segmentAssetHTML("audios",id,i,index)).join("")}</div></div>
       </div></section>`).join("");
     for(const button of list.querySelectorAll("[data-remove-segment-asset]"))button.onclick=event=>{
       event.stopPropagation();
@@ -1147,13 +1225,13 @@ class TimelineDirectorUI {
       const kind=bin.dataset.segmentDrop,index=num(bin.dataset.segmentIndex);
       bin.ondragover=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect=this.assetDrag.source==="library"?"copy":"move";bin.classList.add("drag-over");};
       bin.ondragleave=event=>{if(!bin.contains(event.relatedTarget))bin.classList.remove("drag-over");};
-      bin.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();if(event.target.closest?.("[data-segment-asset]"))return;if(place(kind,index)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(`第 ${index+1} 段素材已更新`);}};
+      bin.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();if(event.target.closest?.("[data-segment-asset]"))return;if(place(kind,index)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(tr("segmentUpdated",{index:index+1}));}};
     }
     for(const card of list.querySelectorAll("[data-segment-asset]")){
       const kind=card.dataset.segmentKind,index=num(card.dataset.segmentIndex),id=card.dataset.segmentAsset;
       card.ondragstart=event=>{if(event.target.closest?.("button")){event.preventDefault();return;}this.assetDrag={kind,id,source:"segment",segmentIndex:index};card.classList.add("dragging");event.dataTransfer.effectAllowed="copyMove";event.dataTransfer.setData("text/plain",id);};
       card.ondragover=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind||this.assetDrag.id===id)return;event.preventDefault();event.stopPropagation();const rect=card.getBoundingClientRect(),after=event.clientX>=rect.left+rect.width/2;for(const other of card.parentElement.querySelectorAll("[data-segment-asset]"))other.classList.remove("drop-before","drop-after");card.classList.add(after?"drop-after":"drop-before");};
-      card.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();const rect=card.getBoundingClientRect(),after=event.clientX>=rect.left+rect.width/2;if(place(kind,index,id,after)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(`第 ${index+1} 段素材顺序已更新`);}};
+      card.ondrop=event=>{if(!this.assetDrag||this.assetDrag.kind!==kind)return;event.preventDefault();event.stopPropagation();const rect=card.getBoundingClientRect(),after=event.clientX>=rect.left+rect.width/2;if(place(kind,index,id,after)){this.assetDrag=null;clear();this.sync();this.render();this.setStatus(tr("segmentOrderUpdated",{index:index+1}));}};
       card.ondragend=()=>{this.assetDrag=null;clear();};
     }
   }
@@ -1161,23 +1239,24 @@ class TimelineDirectorUI {
   renderTags() {
     const plan=this.referencePlan();
     const independentPictures=this.state.images.length;
-    const videoText=plan.videoPieces.length ? `普通参考视频 <Video 1..${plan.videoPieces.length}>` : "无普通视频参考";
+    const videoText=plan.videoPieces.length ? tr("normalVideoRefs",{count:plan.videoPieces.length}) : tr("noNormalVideoRefs");
     const audioTotal=plan.pairedAudioCount+this.state.audios.length;
-    const pictureText=independentPictures ? `独立图片 <Picture 1..${independentPictures}>` : "无独立图片";
+    const pictureText=independentPictures ? tr("independentPictures",{count:independentPictures}) : tr("noIndependentPictures");
     const guideFrames=plan.guidePieces.reduce((sum,item)=>sum+item.frames,0);
     const fullGuides=plan.guidePieces.filter(item=>item.mode==="guide").length;
     const edgeGuides=plan.guidePieces.filter(item=>item.mode==="boundary").length;
-    const guideText=plan.guidePieces.length ? `${fullGuides ? `原生固定 ${fullGuides}段` : ""}${fullGuides&&edgeGuides ? " + " : ""}${edgeGuides ? `边界固定 ${edgeGuides}段` : ""}/${guideFrames}帧` : (plan.gapGuideCount ? `空隙首尾 Guide ${plan.gapGuideCount}帧` : "无固定 Guide");
-    const standaloneAudio=this.state.audios.length ? `独立音频 <Audio 1..${this.state.audios.length}>` : "无独立音频";
-    const pairedAudio=!this.state.videoAudioEnabled ? "视频原声：参考已关闭" : (plan.pairedAudioCount ? `视频原声 <Audio ${this.state.audios.length+1}..${audioTotal}>` : "无视频原声标签");
-    const segmentText=this.state.segmentConfig.count?`素材分段 ${this.state.segmentConfig.count} 段（按提示词序号筛选）`:"未启用素材分段";
+    const guideParts=[fullGuides?tr("nativeFixed",{count:fullGuides}):"",edgeGuides?tr("boundaryFixed",{count:edgeGuides}):""].filter(Boolean).join(" + ");
+    const guideText=plan.guidePieces.length ? tr("guideSummary",{parts:guideParts,frames:guideFrames}) : (plan.gapGuideCount ? tr("gapGuide",{count:plan.gapGuideCount}) : tr("noFixedGuide"));
+    const standaloneAudio=this.state.audios.length ? tr("standaloneAudioRefs",{count:this.state.audios.length}) : tr("noStandaloneAudio");
+    const pairedAudio=!this.state.videoAudioEnabled ? tr("videoAudioDisabled") : (plan.pairedAudioCount ? tr("pairedVideoAudio",{start:this.state.audios.length+1,end:audioTotal}) : tr("noVideoAudioLabels"));
+    const segmentText=this.state.segmentConfig.count?tr("segmentFilterSummary",{count:this.state.segmentConfig.count}):tr("noSegmentFilter");
     this.root.querySelector(".m3td-tags").textContent = `${segmentText} · ${pictureText} · ${guideText} · ${videoText} · ${standaloneAudio} · ${pairedAudio}`;
   }
 
   splitSelected() {
     const index=this.state.videoClips.findIndex(c=>c.id===this.selectedId); if(index<0)return;
     const clip=this.state.videoClips[index], cut=this.playhead-clip.start;
-    if(cut<=5/24 || cut>=clip.duration-5/24){this.setStatus("播放头需在所选片段内部");return;}
+    if(cut<=5/24 || cut>=clip.duration-5/24){this.setStatus(tr("playheadInsideClip"));return;}
     const right={...clip,id:uid(),start:this.playhead,duration:clip.duration-cut,trimStart:clip.trimStart+cut};
     clip.duration=cut; this.state.videoClips.splice(index+1,0,right); this.selectedId=right.id; this.sync();this.render();
   }
@@ -1192,14 +1271,14 @@ class TimelineDirectorUI {
 
   fitSelectionToGapAt(time) {
     const gaps=this.timelineGaps();
-    if(!gaps.length){this.setStatus("当前视频片段之间没有可匹配的空隙");return;}
+    if(!gaps.length){this.setStatus(tr("noMatchingGap"));return;}
     const gap=gaps.reduce((best,current)=>{
       const distance=time<current.start?current.start-time:time>current.start+current.duration?time-current.start-current.duration:0;
       const bestDistance=time<best.start?best.start-time:time>best.start+best.duration?time-best.start-best.duration:0;
       return distance<bestDistance?current:best;
     });
     this.state.selection.start=gap.start;this.state.selection.duration=gap.duration;this.playhead=gap.start;
-    this.sync();this.render();this.setStatus(`生成选区已匹配空隙：${gap.duration.toFixed(2)} 秒`);
+    this.sync();this.render();this.setStatus(tr("selectionMatchedGap",{duration:gap.duration.toFixed(2)}));
   }
 
   fitSelectionToNearestGap() {
@@ -1211,29 +1290,43 @@ class TimelineDirectorUI {
 
   async addFile(kind,file) {
     if(this.uploading)return;
-    if(kind==="image"&&this.state.images.length>=9){this.setStatus("图片最多 9 张");return;}
-    if(kind==="audio"&&this.state.audios.length>=3){this.setStatus("独立音频最多 3 段");return;}
+    if(kind==="image"&&this.state.images.length>=9){this.setStatus(tr("maxImages"));return;}
+    if(kind==="audio"&&this.state.audios.length>=3){this.setStatus(tr("maxAudio"));return;}
     this.uploading=true;
     try{
+      if(file.size<=0)throw new Error(tr("emptyFile"));
+      if(file.size>MAX_UPLOAD_BYTES)throw new Error(tr("tooLarge"));
       const serverName=`${Date.now()}_${Math.random().toString(36).slice(2,7)}_${file.name.replace(/[^\w.()\-\u4e00-\u9fff]+/gu,"_")}`;
-      const total=Math.max(1,Math.ceil(file.size/CHUNK_SIZE));let info=null;
-      for(let index=0;index<total;index++){
-        const data=new FormData();data.append("file",file.slice(index*CHUNK_SIZE,Math.min(file.size,(index+1)*CHUNK_SIZE)),file.name);
-        data.append("filename",serverName);data.append("chunk_index",String(index));data.append("total_chunks",String(total));
-        this.setStatus(`上传 ${file.name} ${index+1}/${total}`,index/total);
-        const response=await api.fetchApi("/minimax_h3_timeline/upload_chunk",{method:"POST",body:data});
-        const payload=await response.json();if(!response.ok||payload.error)throw new Error(payload.error||`HTTP ${response.status}`);info=payload;
+      const data=new FormData();
+      data.append("image",file,serverName);
+      data.append("type","input");
+      data.append("subfolder",UPLOAD_SUBFOLDER);
+      this.setStatus(tr("uploading",{name:file.name}),0.15);
+      const uploadResponse=await api.fetchApi("/upload/image",{method:"POST",body:data});
+      const uploadPayload=await responseJSON(uploadResponse);
+      if(!uploadResponse.ok){
+        const hint=uploadResponse.status===413?tr("uploadSizeHint"):"";
+        throw new Error(uploadPayload.error||tr("uploadFailed",{status:uploadResponse.status,hint}));
       }
+      const uploadedFile=uploadedRelativePath(uploadPayload);
+      this.setStatus(tr("checking",{name:file.name}),0.75);
+      const infoResponse=await api.fetchApi("/minimax_h3_timeline/media_info",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({filename:uploadedFile,kind}),
+      });
+      const info=await responseJSON(infoResponse);
+      if(!infoResponse.ok||info.error)throw new Error(info.error||tr("mediaCheckFailed",{status:infoResponse.status}));
       if(kind==="video"){
-        if(!info.hasVideo)throw new Error("上传的文件不包含视频轨");
+        if(!info.hasVideo)throw new Error(tr("noVideoTrack"));
         const start=this.state.videoClips.reduce((m,c)=>Math.max(m,c.start+c.duration),0);
         const duration=Math.max(5/24,num(info.duration,5));
         const clip={id:uid(),file:info.filename,name:file.name,start,duration,trimStart:0,sourceDuration:duration,hasAudio:!!info.hasAudio,referenceMode:"guide",peaks:info.peaks||[],proxy:""};
         this.state.videoClips.push(clip);this.selectedId=clip.id;
       }else if(kind==="image")this.state.images.push({id:uid(),file:info.filename,name:file.name,width:info.width||0,height:info.height||0});
-      else { if(!info.hasAudio)throw new Error("上传的文件不包含音频轨"); this.state.audios.push({id:uid(),file:info.filename,name:file.name,duration:info.duration||0,trimStart:0}); }
-      this.sync();this.render();this.setStatus(`已添加 ${file.name}`,1);
-    }catch(error){console.error("[MiniMaxH3TimelineDirector]",error);this.setStatus(`失败：${error.message}`,0);}
+      else { if(!info.hasAudio)throw new Error(tr("noAudioTrack")); this.state.audios.push({id:uid(),file:info.filename,name:file.name,duration:info.duration||0,trimStart:0}); }
+      this.sync();this.render();this.setStatus(tr("addedFile",{name:file.name}),1);
+    }catch(error){console.error("[MiniMaxH3TimelineDirector]",error);this.setStatus(tr("failed",{error:error.message}),0);}
     finally{this.uploading=false;setTimeout(()=>{this.progress.style.width="0";},800);}
   }
 
@@ -1254,7 +1347,27 @@ class TimelineDirectorUI {
 app.registerExtension({
   name: "MiniMaxH3.TimelineDirector",
   async beforeRegisterNodeDef(nodeType,nodeData) {
+    if(nodeData.name==="MiniMaxH3FiniteSegmentSampler"){
+      const originalConfigure=nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure=function(info){
+        const result=originalConfigure?.apply(this,arguments);
+        const legacy=Array.isArray(info?.widgets_values)&&info.widgets_values.length>=5?info.widgets_values:null;
+        const named=info?.widgets_values_named;
+        const values={
+          seed:named?.seed??legacy?.[0],
+          continue_audio_latent:named?.continue_audio_latent??legacy?.[2],
+          ref_image_size:named?.ref_image_size??legacy?.[4],
+        };
+        for(const [name,value] of Object.entries(values)){
+          const widget=this.widgets?.find(item=>item.name===name);
+          if(widget&&value!==undefined)widget.value=value;
+        }
+        return result;
+      };
+      return;
+    }
     if(!TIMELINE_NODE_NAMES.has(nodeData.name))return;
+    await ensureTimelineLocale();
     installStyles();
     const originalCreated=nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated=function(){
@@ -1289,7 +1402,7 @@ app.registerExtension({
       const directorWidget=this.addDOMWidget("minimax_h3_timeline","div",root,{serialize:false,hideOnZoom:false});
       requestAnimationFrame(()=>root.parentElement?.classList.add("m3td-widget-host"));
       directorWidget.computeSize=width=>[Math.max(100,(this.size?.[0]||width||860)-20),directorWidget.__m3tdHeight||DIRECTOR_HEIGHT];
-      const brand=nodeData.name==="MiniMaxH3TimelinePlanner"?"MiniMax H3 素材规划台":"MiniMax H3 时间线导演台（兼容）";
+      const brand=tr(nodeData.name==="MiniMaxH3TimelinePlanner"?"brandPlanner":"brandDirector");
       this.__m3td=new TimelineDirectorUI(this,root,timelineWidget,brand);
       this.__m3td.directorWidget=directorWidget;
       // The Vue DOM widget can mount one or more frames after onNodeCreated.

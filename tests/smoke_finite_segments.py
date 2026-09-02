@@ -62,6 +62,9 @@ def main():
     planner_inputs = {item.id for item in planner_schema.inputs}
     assert not planner_inputs.intersection({"model", "clip", "vae", "audio_vae", "sampler", "sigmas", "seed"})
     assert sampler_schema.enable_expand is True
+    sampler_input_ids = {item.id for item in sampler_schema.inputs}
+    assert "increment_seed" not in sampler_input_ids
+    assert "gradient_temporal_mask" not in sampler_input_ids
 
     prompts = "\n--- SEGMENT ---\n".join(
         [_prompt("First"), _prompt("Second"), _prompt("Third")]
@@ -72,14 +75,14 @@ def main():
     )
     finite_plan = planned[0]
     assert planned[1] == 39
-    assert "不执行采样" in planned[2]
+    assert "performs no sampling" in planned[2]
     assert "fixed latent continuation" not in finite_plan["prompts"][0]
     assert "fixed latent continuation" in finite_plan["prompts"][1]
 
     output = finite.MiniMaxH3FiniteSegmentSampler.execute(
         model=object(), clip=object(), vae=object(), audio_vae=object(),
         finite_plan=finite_plan, sampler=object(), sigmas=object(), seed=100,
-        increment_seed=True, continue_audio_latent=True, ref_image_size="match",
+        continue_audio_latent=True, ref_image_size="match",
     )
     graph = output.expand
     by_type = {}
@@ -97,10 +100,13 @@ def main():
     assert [len(node[1]["plan"]["timeline"]["images"]) for node in encoders] == [2, 1, 1]
     assert [len(node[1]["plan"]["timeline"]["audios"]) for node in encoders] == [1, 1, 0]
     noises = sorted(by_type["RandomNoise"])
-    assert [node[1]["noise_seed"] for node in noises] == [100, 101, 102]
+    assert [node[1]["noise_seed"] for node in noises] == [100, 100, 100]
     continuations = sorted(by_type["MiniMaxH3FiniteLatentContinuation"])
     assert "previous_latent" not in continuations[0][1]
     assert "previous_latent" in continuations[1][1]
+    assert all("gradient_temporal_mask" not in item[1] for item in continuations)
+    assert "Guide mask ramps 0→1" in output[3]
+    assert "all segments use seed 100" in output[3]
     assert all(
         node["class_type"] not in {
             "Loop", "LoopVariable", "CloseLoop", "MiniMaxH3LoopPromptSelector",

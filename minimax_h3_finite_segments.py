@@ -28,7 +28,7 @@ FiniteSegmentPlan = io.Custom("MINIMAX_H3_FINITE_SEGMENT_PLAN")
 def _parse_segment_prompts(value: str) -> list[str]:
     text = (value or "").strip()
     if not text:
-        raise ValueError("分段提示词不能为空")
+        raise ValueError("Segment prompts cannot be empty")
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
@@ -44,7 +44,7 @@ def _parse_segment_prompts(value: str) -> list[str]:
             if part.strip()
         ]
     if not prompts:
-        raise ValueError("没有解析到分段提示词；请使用 JSON 数组或 --- SEGMENT --- 分隔")
+        raise ValueError("No segment prompts were parsed; use a JSON array or --- SEGMENT --- separators")
     return prompts
 
 
@@ -70,7 +70,7 @@ def _inject_continuity_instruction(prompt: str, overlap_frames: int) -> tuple[st
 def _plan_for_segment(plan, segment_number: int):
     source = _require_timeline_plan(plan)
     if source.get("prompt_index") is not None:
-        raise ValueError("有限分段需要完整素材规划；请不要给素材规划台连接“提示词序号”")
+        raise ValueError("Finite segments require the complete material plan; leave Prompt Index disconnected")
     timeline, selected, configured_count = _timeline_for_prompt_index(
         source["timeline"], segment_number
     )
@@ -93,12 +93,12 @@ def _prepare_finite_plan(
     configured_count = int(source.get("segment_count") or 0)
     if configured_count > 0 and configured_count != count:
         raise ValueError(
-            f"素材规划台配置了 {configured_count} 段，但有限分段设置为 {count} 段；请保持一致"
+            f"The material planner has {configured_count} segments but finite expansion requests {count}; keep them identical"
         )
     prompts = _parse_segment_prompts(segment_prompts)
     if len(prompts) != count:
         raise ValueError(
-            f"有限分段设置为 {count} 段，但解析到 {len(prompts)} 段提示词；请严格保持一致"
+            f"Finite expansion requests {count} segments but parsed {len(prompts)} prompts; keep them identical"
         )
     actual_overlap = _valid_guide_frames(int(overlap_frames))
     prepared = []
@@ -107,7 +107,7 @@ def _prepare_finite_plan(
             prompt, injected = _inject_continuity_instruction(prompt, actual_overlap)
             if not injected:
                 raise ValueError(
-                    f"第 {index + 1} 段未在标准 H3 字段中找到 [Shot 1]，无法注入连续性说明"
+                    f"Segment {index + 1} has no [Shot 1] in the standard H3 fields; continuity instructions cannot be injected"
                 )
         prepared.append(prompt)
     return {
@@ -123,11 +123,11 @@ def _prepare_finite_plan(
 
 def _require_finite_plan(value):
     if not isinstance(value, dict) or value.get("type") != "minimax_h3_finite_segment_plan":
-        raise ValueError("finite_plan 必须来自 MiniMax H3 有限分段展开")
+        raise ValueError("finite_plan must come from MiniMax H3 Finite Segment Expansion")
     count = int(value.get("segment_count") or 0)
     prompts = value.get("prompts")
     if count < 1 or not isinstance(prompts, list) or len(prompts) != count:
-        raise ValueError("有限分段规划数据不完整，请重新执行有限分段展开")
+        raise ValueError("The finite segment plan is incomplete; run Finite Segment Expansion again")
     return value
 
 
@@ -138,28 +138,28 @@ class MiniMaxH3FiniteSegmentExpansion(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3FiniteSegmentExpansion",
-            display_name="MiniMax H3 有限分段展开",
-            category="MiniMax H3/长视频",
+            display_name="MiniMax H3 Finite Segment Expansion",
+            category="MiniMax H3/Long Video",
             description=(
-                "只负责解析提示词、校验段数、匹配每段素材并生成有限分段规划；"
-                "不包含模型、采样器、调度器或采样过程。"
+                "Parse prompts, validate segment counts, match per-segment media, and build a finite plan. "
+                "This node performs no model loading, scheduling, or sampling."
             ),
             inputs=[
-                TimelinePlan.Input("plan", display_name="素材规划参数"),
+                TimelinePlan.Input("plan", display_name="Material Plan"),
                 io.String.Input("segment_prompts", multiline=True),
-                io.Int.Input("segment_count", display_name="分段数量", default=3, min=1, max=12),
+                io.Int.Input("segment_count", display_name="Segment Count", default=3, min=1, max=12),
                 io.Int.Input(
-                    "overlap_frames", display_name="重叠帧", default=22,
-                    min=1, max=362, tooltip="自动向下对齐为 1 或 5/22/39/56…帧。",
+                    "overlap_frames", display_name="Overlap Frames", default=22,
+                    min=1, max=362, tooltip="Rounded down to a valid 1 or 5/22/39/56… frame count.",
                 ),
                 io.Boolean.Input(
-                    "inject_continuity_instruction", display_name="注入开头连续性说明", default=True,
+                    "inject_continuity_instruction", display_name="Inject Opening Continuity", default=True,
                 ),
             ],
             outputs=[
-                FiniteSegmentPlan.Output(display_name="有限分段规划"),
-                io.Int.Output(display_name="实际重叠帧"),
-                io.String.Output(display_name="规划状态"),
+                FiniteSegmentPlan.Output(display_name="Finite Segment Plan"),
+                io.Int.Output(display_name="Actual Overlap Frames"),
+                io.String.Output(display_name="Planning Status"),
             ],
         )
 
@@ -174,8 +174,8 @@ class MiniMaxH3FiniteSegmentExpansion(io.ComfyNode):
         )
         overlap = finite["overlap_frames"]
         status = (
-            f"已规划 {finite['segment_count']} 段；实际重叠 {overlap} 帧 "
-            f"({overlap / H3_FPS:.3f} 秒)；本节点不执行采样。"
+            f"Planned {finite['segment_count']} segments; actual overlap is {overlap} frames "
+            f"({overlap / H3_FPS:.3f}s). This node performs no sampling."
         )
         return io.NodeOutput(finite, overlap, status)
 
@@ -187,8 +187,8 @@ class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3FiniteLatentContinuation",
-            display_name="MiniMax H3 有限分段 Latent 续接（内部）",
-            category="MiniMax H3/内部",
+            display_name="MiniMax H3 Finite Latent Continuation (Internal)",
+            category="MiniMax H3/Internal",
             is_dev_only=True,
             inputs=[
                 io.Conditioning.Input("positive"),
@@ -200,8 +200,8 @@ class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
-                io.Latent.Output(display_name="目标 latent"),
-                io.Int.Output(display_name="实际重叠帧"),
+                io.Latent.Output(display_name="Target Latent"),
+                io.Int.Output(display_name="Actual Overlap Frames"),
             ],
         )
 
@@ -214,7 +214,7 @@ class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
         if int(iteration) <= 0:
             return io.NodeOutput(positive, target_latent, actual_overlap)
         if previous_latent is None:
-            raise ValueError("第 2 段及以后缺少上一段 sampled latent")
+            raise ValueError("Segment 2 and later require the previous sampled latent")
         keyframe, details = _build_direct_latent_keyframe(
             target_latent=target_latent,
             source_latent=previous_latent,
@@ -227,6 +227,7 @@ class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
             source_latent=previous_latent,
             guide_frames=actual_overlap,
             include_audio=bool(continue_audio_latent),
+            gradient=True,
         )
         keyframes = list(positive[0][1].get("minimax_keyframes", []))
         keyframes.append(keyframe)
@@ -243,8 +244,8 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3FiniteSegmentFinalize",
-            display_name="MiniMax H3 有限分段去重（内部）",
-            category="MiniMax H3/内部",
+            display_name="MiniMax H3 Finite Segment Finalize (Internal)",
+            category="MiniMax H3/Internal",
             is_dev_only=True,
             inputs=[
                 io.Latent.Input("sampled_latent"),
@@ -254,9 +255,9 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
                 io.Audio.Input("audio", optional=True),
             ],
             outputs=[
-                io.Latent.Output(display_name="完整 latent"),
-                io.Image.Output(display_name="去重画面"),
-                io.Audio.Output(display_name="去重音频"),
+                io.Latent.Output(display_name="Complete Latent"),
+                io.Image.Output(display_name="Deduplicated Frames"),
+                io.Audio.Output(display_name="Deduplicated Audio"),
             ],
         )
 
@@ -264,17 +265,17 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
     def execute(cls, sampled_latent, images, iteration, overlap_frames, audio=None):
         trim_frames = 0 if int(iteration) <= 0 else _valid_guide_frames(int(overlap_frames))
         if images.shape[0] <= trim_frames:
-            raise ValueError(f"本段只有 {images.shape[0]} 帧，无法删除 {trim_frames} 帧重叠区")
+            raise ValueError(f"This segment has only {images.shape[0]} frames; cannot remove a {trim_frames}-frame overlap")
         trimmed_images = images[trim_frames:].clone() if trim_frames else images
         trimmed_audio = audio
         if audio is not None:
             waveform = audio.get("waveform")
             sample_rate = int(audio.get("sample_rate", 0))
             if waveform is None or sample_rate <= 0:
-                raise ValueError("audio 必须包含 waveform 和有效 sample_rate")
+                raise ValueError("audio must contain waveform and a valid sample_rate")
             trim_samples = round((trim_frames / H3_FPS) * sample_rate)
             if waveform.shape[-1] <= trim_samples:
-                raise ValueError("本段音频长度不足以删除对应重叠区")
+                raise ValueError("This segment's audio is too short to remove the overlap")
             trimmed_audio = dict(audio)
             trimmed_audio["waveform"] = (
                 waveform[..., trim_samples:].clone() if trim_samples else waveform
@@ -289,11 +290,11 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3FiniteSegmentSampler",
-            display_name="MiniMax H3 有限分段采样",
-            category="MiniMax H3/长视频",
+            display_name="MiniMax H3 Finite Segment Sampler",
+            category="MiniMax H3/Long Video",
             description=(
-                "读取有限分段规划并展开普通无环采样图。采样器与调度器仍由外部节点提供，"
-                "不依赖 Loop / Loop Variable / Close Loop。"
+                "Expand a finite plan into a standard acyclic sampling graph. Sampler and scheduler remain "
+                "external; no Loop, Loop Variable, or Close Loop nodes are required."
             ),
             enable_expand=True,
             inputs=[
@@ -301,26 +302,25 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
                 io.Clip.Input("clip"),
                 io.Vae.Input("vae"),
                 io.Vae.Input("audio_vae"),
-                FiniteSegmentPlan.Input("finite_plan", display_name="有限分段规划"),
+                FiniteSegmentPlan.Input("finite_plan", display_name="Finite Segment Plan"),
                 io.Sampler.Input("sampler"),
                 io.Sigmas.Input("sigmas"),
                 io.Int.Input("seed", default=0, min=0, max=0xFFFFFFFFFFFFFFFF, control_after_generate=True),
-                io.Boolean.Input("increment_seed", display_name="每段递增种子", default=True),
-                io.Boolean.Input("continue_audio_latent", display_name="延续音频 latent", default=True),
+                io.Boolean.Input("continue_audio_latent", display_name="Continue Audio Latent", default=True),
                 io.Combo.Input("ref_image_size", options=["match", "max"], default="match"),
             ],
             outputs=[
-                io.Latent.Output(display_name="末段 sampled latent"),
-                io.Image.Output(display_name="合并画面"),
-                io.Audio.Output(display_name="合并音频"),
-                io.String.Output(display_name="采样状态"),
+                io.Latent.Output(display_name="Last Sampled Latent"),
+                io.Image.Output(display_name="Merged Frames"),
+                io.Audio.Output(display_name="Merged Audio"),
+                io.String.Output(display_name="Sampling Status"),
             ],
         )
 
     @classmethod
     def execute(
         cls, model, clip, vae, audio_vae, finite_plan, sampler, sigmas, seed,
-        increment_seed, continue_audio_latent, ref_image_size="match",
+        continue_audio_latent, ref_image_size="match",
     ):
         finite = _require_finite_plan(finite_plan)
         graph = GraphBuilder()
@@ -349,8 +349,7 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
                 "MiniMaxH3FiniteLatentContinuation", id=f"continue_{number}",
                 **continuation_inputs,
             )
-            noise_seed = ((int(seed) + index) % (1 << 64)) if increment_seed else int(seed)
-            noise = graph.node("RandomNoise", id=f"noise_{number}", noise_seed=noise_seed)
+            noise = graph.node("RandomNoise", id=f"noise_{number}", noise_seed=int(seed))
             guider = graph.node(
                 "BasicGuider", id=f"guider_{number}", model=model,
                 conditioning=continuation.out(0),
@@ -388,8 +387,9 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
             last_sampled = sampled.out(0)
 
         status = (
-            f"已展开并采样 {finite['segment_count']} 段；实际重叠 {overlap} 帧；"
-            f"音频 latent {'参与延续' if continue_audio_latent else '不参与延续'}。"
+            f"Expanded and sampled {finite['segment_count']} segments; actual overlap {overlap} frames; "
+            f"all segments use seed {int(seed)}; Guide mask ramps 0→1; "
+            f"audio latent {'continues' if continue_audio_latent else 'does not continue'}."
         )
         return io.NodeOutput(
             last_sampled, merged_images, merged_audio, status, expand=graph.finalize()

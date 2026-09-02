@@ -5,8 +5,8 @@
 ## Headline feature: lightweight unlimited-length video generation
 
 The plugin splits any target duration into continuous segments and completes them in one ComfyUI
-execution: per-segment generation, direct continuation from the previous AV-latent tail, a linear
-`0→1` temporal mask, overlap removal, and final synchronized assembly. Extend the result by increasing
+execution: per-segment generation with one shared seed, direct continuation from the previous
+AV-latent tail, a linear `0→1` temporal mask, overlap removal, and final synchronized assembly. Extend the result by increasing
 the segment count—without generic Loop nodes or duplicated sampler chains. Practical length is limited
 only by local VRAM, RAM, disk space, and ComfyUI execution limits.
 
@@ -82,6 +82,10 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 Restart ComfyUI and search for `MiniMax H3`.
 
+The source UI is English. Simplified Chinese is provided through ComfyUI's official localization
+system and follows the language selected in ComfyUI settings; restart or reload the frontend after
+changing the locale.
+
 ### Requirements
 
 - A recent ComfyUI build with the native MiniMax H3 nodes; `MiniMaxH3AddGuide` is additionally required only when Guides are used.
@@ -123,8 +127,8 @@ Adds **MiniMax-H3 Prompt Rewriter Omni (sees and hears)** so the same ordered me
 
 **MiniMax H3 Finite Segment Expansion** only validates prompts, segment count, and media
 assignments; it performs no sampling. Connect its plan to **MiniMax H3 Finite Segment Sampling**
-to build a standard acyclic graph for direct AV-latent continuation, linear temporal masking,
-overlap removal, and ordered assembly. No generic Loop nodes are required.
+to build a standard acyclic graph for direct AV-latent continuation, linear `0→1` temporal masking,
+overlap removal, and ordered assembly. Every segment uses the same seed. No generic Loop nodes are required.
 
 [Download finite workflow](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
 [Chinese guide](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
@@ -152,7 +156,8 @@ Generate long videos in overlapping segments. Use the previous segment's final s
 
 Finite sampling carries the previous sampled AV latent tail directly into the next opening,
 avoids an RGB decode/re-encode round trip, and applies a `0→1` temporal noise ramp across the
-overlap. The old generic-loop helper nodes and PR #15923 dependency have been removed.
+overlap. All segments use exactly the seed shown on the sampling node; the area after the overlap
+remains `1`. The old generic-loop helper nodes and PR #15923 dependency have been removed.
 
 ## Credits
 

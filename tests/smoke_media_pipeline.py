@@ -46,7 +46,28 @@ def main() -> None:
     backend.MiniMaxH3OmniPromptBridge.define_schema()
     backend.MiniMaxH3TimelineEncoder.define_schema()
     backend.MiniMaxH3TimelineDirector.define_schema()
+    registered_routes = {
+        (route.method, route.path)
+        for route in getattr(PromptServer.instance.routes, "_items", [])
+    }
+    assert ("POST", "/minimax_h3_timeline/media_info") in registered_routes
+    assert ("POST", "/minimax_h3_timeline/preview_proxy") in registered_routes
+    assert not any(path == "/minimax_h3_timeline/upload_chunk" for _, path in registered_routes)
+    assert not any(
+        method == "GET" and path.startswith("/minimax_h3_timeline/")
+        for method, path in registered_routes
+    )
     video, image, audio = sys.argv[1:]
+    if all(
+        Path(item).parts and Path(item).parts[0] == backend.UPLOAD_SUBDIR
+        for item in (video, image, audio)
+    ):
+        uploaded_video = backend._safe_uploaded_path(video, "video")
+        uploaded_image = backend._safe_uploaded_path(image, "image")
+        uploaded_audio = backend._safe_uploaded_path(audio, "audio")
+        assert backend._uploaded_media_info(uploaded_video, "video")["hasVideo"]
+        assert backend._uploaded_media_info(uploaded_image, "image")["width"] > 0
+        assert backend._uploaded_media_info(uploaded_audio, "audio")["hasAudio"]
     timeline = {
         "selection": {"start": 2.0, "duration": 5.0},
         "videoClips": [{
@@ -111,8 +132,8 @@ def main() -> None:
     assert len(prompt_audios) == 1 and len(prompt_video_audios) == 1
     manifest = backend._reference_manifest(plan)
     assert "<Picture 1>" in manifest and "<Video 1>" in manifest
-    assert "<Audio 1> = 独立音频" in manifest
-    assert "<Audio 2> = <Video 1> 对应原声" in manifest
+    assert "<Audio 1> = standalone audio" in manifest
+    assert "<Audio 2> = original audio paired with <Video 1>" in manifest
     bundle = backend._create_prompt_media_bundle(plan)
     assert bundle["type"] == "MINIMAX_H3_OMNI_MEDIA_BUNDLE"
     assert [item["label"] for item in bundle["items"]] == [
@@ -182,7 +203,7 @@ def main() -> None:
             json.dumps(segmented_timeline), target_width, target_height, 5.0, prompt_index=4
         )
     except ValueError as error:
-        assert "超出素材规划台" in str(error)
+        assert "exceeds the planner" in str(error)
     else:
         raise AssertionError("out-of-range prompt index must fail clearly")
 
@@ -363,6 +384,12 @@ def main() -> None:
     assert gap_video_track["waveform"].shape[-1] == 10 * 44100
     assert torch.count_nonzero(gap_video_track["waveform"][..., 2 * 44100 : 7 * 44100]) == 0
     proxy = backend._ensure_preview_proxy(backend._safe_input_path(video))
+    try:
+        backend._safe_uploaded_path(proxy, "video")
+    except ValueError as error:
+        assert "direct uploads" in str(error)
+    else:
+        raise AssertionError("generated proxies must not be accepted as HTTP source media")
     proxy_info = backend._media_info(backend._safe_input_path(proxy), include_peaks=False)
     assert proxy_info["hasVideo"] and not proxy_info["hasAudio"]
     assert proxy_info["width"] <= 480 and proxy_info["height"] <= 270

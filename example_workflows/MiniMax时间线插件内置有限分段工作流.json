@@ -555,12 +555,10 @@
       "widgets_values": [
         2157,
         true,
-        true,
         "match"
       ],
       "widgets_values_named": {
         "seed": 2157,
-        "increment_seed": true,
         "continue_audio_latent": true,
         "ref_image_size": "match"
       }

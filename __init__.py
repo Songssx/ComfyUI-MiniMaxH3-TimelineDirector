@@ -31,16 +31,16 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MiniMaxH3TimelineDirector": "MiniMax H3 时间线导演台",
-    "MiniMaxH3TimelinePlanner": "MiniMax H3 素材规划台",
-    "MiniMaxH3TimelineEncoder": "MiniMax H3 规划编码器",
-    "MiniMaxH3OmniPromptBridge": "MiniMax H3 Omni 素材包提示词桥",
-    "MiniMaxH3AddLatentGuide": "MiniMax H3 直接 Latent Guide（实验）",
-    "MiniMaxH3VisualDifferenceMetrics": "MiniMax H3 视频差异指标（实验）",
-    "MiniMaxH3FiniteSegmentExpansion": "MiniMax H3 有限分段展开",
-    "MiniMaxH3FiniteSegmentSampler": "MiniMax H3 有限分段采样",
-    "MiniMaxH3FiniteLatentContinuation": "MiniMax H3 有限分段 Latent 续接（内部）",
-    "MiniMaxH3FiniteSegmentFinalize": "MiniMax H3 有限分段去重（内部）",
+    "MiniMaxH3TimelineDirector": "MiniMax H3 Timeline Director",
+    "MiniMaxH3TimelinePlanner": "MiniMax H3 Material Planner",
+    "MiniMaxH3TimelineEncoder": "MiniMax H3 Plan Encoder",
+    "MiniMaxH3OmniPromptBridge": "MiniMax H3 Omni Media Prompt Bridge",
+    "MiniMaxH3AddLatentGuide": "MiniMax H3 Direct Latent Guide (Experimental)",
+    "MiniMaxH3VisualDifferenceMetrics": "MiniMax H3 Video Difference Metrics (Experimental)",
+    "MiniMaxH3FiniteSegmentExpansion": "MiniMax H3 Finite Segment Expansion",
+    "MiniMaxH3FiniteSegmentSampler": "MiniMax H3 Finite Segment Sampler",
+    "MiniMaxH3FiniteLatentContinuation": "MiniMax H3 Finite Latent Continuation (Internal)",
+    "MiniMaxH3FiniteSegmentFinalize": "MiniMax H3 Finite Segment Finalize (Internal)",
 }
 
 WEB_DIRECTORY = "./js"
