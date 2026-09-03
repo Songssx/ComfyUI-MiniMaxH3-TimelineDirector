@@ -6,14 +6,16 @@ import copy
 import json
 import re
 
-import node_helpers
 from comfy_api.latest import io
 from comfy_execution.graph_utils import GraphBuilder
 
 from .experimental_latent_guide import (
     _apply_linear_temporal_noise_mask,
-    _build_direct_latent_keyframe,
     _valid_guide_frames,
+)
+from .drift_control_av import (
+    drift_control_step_count,
+    install_drift_control_av_model,
 )
 from .minimax_h3_timeline_director import (
     TimelinePlan,
@@ -51,7 +53,7 @@ def _parse_segment_prompts(value: str) -> list[str]:
 def _inject_continuity_instruction(prompt: str, overlap_frames: int) -> tuple[str, bool]:
     duration = overlap_frames / H3_FPS
     instruction = (
-        f" The opening 00:00.000-00:{duration:06.3f} is a fixed latent continuation "
+        f" The opening 00:00.000-00:{duration:06.3f} is a carried latent continuation "
         "from the preceding segment. Describe this opening as the preceding segment's "
         "final shot, preserving character positions, environment, motion, camera path, "
         "lighting, color, and sound before introducing new action."
@@ -194,47 +196,42 @@ class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
                 io.Conditioning.Input("positive"),
                 io.Latent.Input("target_latent"),
                 io.Int.Input("iteration", force_input=True),
-                io.Latent.Input("previous_latent", optional=True),
                 io.Int.Input("overlap_frames", default=22, min=1, max=362),
                 io.Boolean.Input("continue_audio_latent", default=True),
+                io.Model.Input("model"),
+                io.Sigmas.Input("sigmas"),
+                io.Latent.Input("previous_latent", optional=True),
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
                 io.Latent.Output(display_name="Target Latent"),
                 io.Int.Output(display_name="Actual Overlap Frames"),
+                io.Model.Output(display_name="Sampling Model"),
             ],
         )
 
     @classmethod
     def execute(
         cls, positive, target_latent, iteration, overlap_frames,
-        continue_audio_latent, previous_latent=None,
+        continue_audio_latent, model, sigmas, previous_latent=None,
     ):
         actual_overlap = _valid_guide_frames(int(overlap_frames))
         if int(iteration) <= 0:
-            return io.NodeOutput(positive, target_latent, actual_overlap)
+            return io.NodeOutput(positive, target_latent, actual_overlap, model)
         if previous_latent is None:
             raise ValueError("Segment 2 and later require the previous sampled latent")
-        keyframe, details = _build_direct_latent_keyframe(
-            target_latent=target_latent,
-            source_latent=previous_latent,
-            guide_frames=actual_overlap,
-            frame_idx=0,
-            include_audio=bool(continue_audio_latent),
-        )
-        masked_target, _ = _apply_linear_temporal_noise_mask(
+        masked_target, details = _apply_linear_temporal_noise_mask(
             target_latent=target_latent,
             source_latent=previous_latent,
             guide_frames=actual_overlap,
             include_audio=bool(continue_audio_latent),
-            gradient=True,
+            gradient=False,
+            audio_soft_release=bool(continue_audio_latent),
         )
-        keyframes = list(positive[0][1].get("minimax_keyframes", []))
-        keyframes.append(keyframe)
-        conditioned = node_helpers.conditioning_set_values(
-            positive, {"minimax_keyframes": keyframes}
+        patched_model = install_drift_control_av_model(
+            model, masked_target, sigmas, prefix_steps=details["video_tokens"]
         )
-        return io.NodeOutput(conditioned, masked_target, details["frames"])
+        return io.NodeOutput(positive, masked_target, details["frames"], patched_model)
 
 
 class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
@@ -252,6 +249,7 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
                 io.Image.Input("images"),
                 io.Int.Input("iteration", force_input=True),
                 io.Int.Input("overlap_frames", default=22, min=1, max=362),
+                io.Boolean.Input("trim_audio_head", default=True),
                 io.Audio.Input("audio", optional=True),
             ],
             outputs=[
@@ -262,13 +260,16 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, sampled_latent, images, iteration, overlap_frames, audio=None):
+    def execute(
+        cls, sampled_latent, images, iteration, overlap_frames,
+        trim_audio_head=True, audio=None,
+    ):
         trim_frames = 0 if int(iteration) <= 0 else _valid_guide_frames(int(overlap_frames))
         if images.shape[0] <= trim_frames:
             raise ValueError(f"This segment has only {images.shape[0]} frames; cannot remove a {trim_frames}-frame overlap")
         trimmed_images = images[trim_frames:].clone() if trim_frames else images
         trimmed_audio = audio
-        if audio is not None:
+        if audio is not None and bool(trim_audio_head):
             waveform = audio.get("waveform")
             sample_rate = int(audio.get("sample_rate", 0))
             if waveform is None or sample_rate <= 0:
@@ -281,6 +282,37 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
                 waveform[..., trim_samples:].clone() if trim_samples else waveform
             )
         return io.NodeOutput(sampled_latent, trimmed_images, trimmed_audio)
+
+
+class MiniMaxH3FiniteAudioTrimTail(io.ComfyNode):
+    """Internal helper that gives an incoming Soft AV segment seam ownership."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteAudioTrimTail",
+            display_name="MiniMax H3 Finite Audio Tail Trim (Internal)",
+            category="MiniMax H3/Internal",
+            is_dev_only=True,
+            inputs=[
+                io.Audio.Input("audio"),
+                io.Int.Input("overlap_frames", default=39, min=1, max=362),
+            ],
+            outputs=[io.Audio.Output(display_name="Trimmed Audio")],
+        )
+
+    @classmethod
+    def execute(cls, audio, overlap_frames):
+        waveform = audio.get("waveform") if isinstance(audio, dict) else None
+        sample_rate = int(audio.get("sample_rate", 0)) if isinstance(audio, dict) else 0
+        if waveform is None or sample_rate <= 0:
+            raise ValueError("audio must contain waveform and a valid sample_rate")
+        trim_samples = round((_valid_guide_frames(int(overlap_frames)) / H3_FPS) * sample_rate)
+        if waveform.shape[-1] <= trim_samples:
+            raise ValueError("Accumulated audio is too short to replace its overlap tail")
+        output = dict(audio)
+        output["waveform"] = waveform[..., :-trim_samples].clone()
+        return io.NodeOutput(output)
 
 
 class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
@@ -329,6 +361,12 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
         merged_audio = None
         last_sampled = None
         overlap = int(finite["overlap_frames"])
+        soft_audio = bool(continue_audio_latent)
+        steps = drift_control_step_count(sigmas)
+        if steps < 1:
+            raise ValueError(
+                "Drift-Control AV requires a sigma schedule with at least one sampling step"
+            )
 
         for index, prompt in enumerate(finite["prompts"]):
             number = index + 1
@@ -342,6 +380,7 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
                 "positive": encoder.out(0), "target_latent": encoder.out(1),
                 "iteration": index, "overlap_frames": overlap,
                 "continue_audio_latent": bool(continue_audio_latent),
+                "model": model, "sigmas": sigmas,
             }
             if previous_latent is not None:
                 continuation_inputs["previous_latent"] = previous_latent
@@ -351,7 +390,7 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
             )
             noise = graph.node("RandomNoise", id=f"noise_{number}", noise_seed=int(seed))
             guider = graph.node(
-                "BasicGuider", id=f"guider_{number}", model=model,
+                "BasicGuider", id=f"guider_{number}", model=continuation.out(3),
                 conditioning=continuation.out(0),
             )
             sampled = graph.node(
@@ -369,6 +408,7 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
                 "MiniMaxH3FiniteSegmentFinalize", id=f"finalize_{number}",
                 sampled_latent=sampled.out(0), images=images.out(0), audio=audio.out(0),
                 iteration=index, overlap_frames=overlap,
+                trim_audio_head=not soft_audio,
             )
             current_images, current_audio = finalized.out(1), finalized.out(2)
             if merged_images is None:
@@ -378,17 +418,28 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
                     "ImageBatch", id=f"join_images_{number}",
                     image1=merged_images, image2=current_images,
                 )
+                previous_audio_for_join = merged_audio
+                if soft_audio:
+                    previous_audio_for_join = graph.node(
+                        "MiniMaxH3FiniteAudioTrimTail", id=f"trim_audio_tail_{number}",
+                        audio=merged_audio, overlap_frames=overlap,
+                    ).out(0)
                 audio_join = graph.node(
                     "AudioConcat", id=f"join_audio_{number}",
-                    audio1=merged_audio, audio2=current_audio, direction="after",
+                    audio1=previous_audio_for_join, audio2=current_audio, direction="after",
                 )
                 merged_images, merged_audio = image_join.out(0), audio_join.out(0)
             previous_latent = sampled.out(0)
             last_sampled = sampled.out(0)
 
+        mode_status = (
+            f"Drift-Control AV {overlap}-frame mask adapted to {steps} sampling steps; overlap audio uses an 8-tick Soft AV half-cosine release"
+            if continue_audio_latent
+            else f"Drift-Control AV {overlap}-frame mask adapted to {steps} sampling steps; audio is independently generated"
+        )
         status = (
             f"Expanded and sampled {finite['segment_count']} segments; actual overlap {overlap} frames; "
-            f"all segments use seed {int(seed)}; Guide mask ramps 0→1; "
+            f"all segments use seed {int(seed)}; {mode_status}; "
             f"audio latent {'continues' if continue_audio_latent else 'does not continue'}."
         )
         return io.NodeOutput(

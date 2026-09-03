@@ -101,6 +101,7 @@ def _apply_linear_temporal_noise_mask(
     guide_frames,
     include_audio=False,
     gradient=True,
+    audio_soft_release=False,
 ):
     """Copy the previous tail and configure denoising inside the Guide interval.
 
@@ -173,17 +174,31 @@ def _apply_linear_temporal_noise_mask(
             device=audio.device, dtype=audio.dtype
         )
         audio[..., :audio_tokens] = audio_tail.expand(audio.shape[0], -1, -1, -1)
-        audio_ramp = (
-            torch.linspace(
+        if audio_soft_release:
+            audio_ramp = torch.zeros(
+                audio_tokens, dtype=audio_mask.dtype, device=audio_mask.device
+            )
+            release_tokens = min(8, audio_tokens)
+            indices = torch.arange(
+                1, release_tokens + 1,
+                dtype=audio_mask.dtype,
+                device=audio_mask.device,
+            )
+            audio_ramp[-release_tokens:] = 0.5 - 0.5 * torch.cos(
+                torch.pi * indices / float(release_tokens)
+            )
+        elif gradient:
+            audio_ramp = torch.linspace(
                 0.0,
                 1.0,
                 steps=audio_tokens,
                 dtype=audio_mask.dtype,
                 device=audio_mask.device,
             )
-            if gradient
-            else torch.zeros(audio_tokens, dtype=audio_mask.dtype, device=audio_mask.device)
-        )
+        else:
+            audio_ramp = torch.zeros(
+                audio_tokens, dtype=audio_mask.dtype, device=audio_mask.device
+            )
         audio_mask[..., :audio_tokens] = audio_ramp.reshape(1, 1, 1, -1)
 
     output = dict(target_latent)
@@ -196,6 +211,7 @@ def _apply_linear_temporal_noise_mask(
         "video_mask_start": float(video_ramp[0].item()),
         "video_mask_end": float(video_ramp[-1].item()),
         "gradient": bool(gradient),
+        "audio_soft_release": bool(audio_soft_release and include_audio),
     }
 
 

@@ -58,8 +58,8 @@ def main():
     assert torch.equal(keyframe["latent"], source_video[:, :, -7:])
     assert "used 22 frames / 7 tokens" in report
 
-    # The finite sampler can either fade the Guide mask from 0 to 1 or keep
-    # the whole Guide interval at 0.  New content after the interval remains 1.
+    # The shared helper can either fade the Guide mask from 0 to 1 or keep
+    # the whole Guide interval at 0. New content after the interval remains 1.
     gradient_target, _ = _latent(37)
     gradient_masked, gradient_details = experiment._apply_linear_temporal_noise_mask(
         gradient_target, source, guide_frames=24, include_audio=True, gradient=True
@@ -85,6 +85,23 @@ def main():
     assert torch.all(fixed_video_mask[:, :, 7:] == 1)
     assert torch.all(fixed_audio_mask[..., :fixed_details["audio_tokens"]] == 0)
     assert torch.all(fixed_audio_mask[..., fixed_details["audio_tokens"]:] == 1)
+
+    soft_target, _ = _latent(37)
+    soft_masked, soft_details = experiment._apply_linear_temporal_noise_mask(
+        soft_target, source, guide_frames=48, include_audio=True,
+        gradient=False, audio_soft_release=True,
+    )
+    soft_video_mask, soft_audio_mask = soft_masked["noise_mask"].tensors
+    assert soft_details["frames"] == 39
+    assert soft_details["audio_tokens"] == 65
+    assert soft_details["audio_soft_release"] is True
+    assert torch.all(soft_video_mask[:, :, :12] == 0)
+    assert torch.all(soft_audio_mask[..., :57] == 0)
+    indices = torch.arange(1, 9, dtype=torch.float32)
+    expected_release = 0.5 - 0.5 * torch.cos(torch.pi * indices / 8.0)
+    assert torch.allclose(soft_audio_mask[0, 0, 0, 57:65], expected_release)
+    assert soft_audio_mask[0, 0, 0, 64] == 1.0
+    assert torch.all(soft_audio_mask[..., 65:] == 1)
 
     ref = torch.zeros((2, 8, 8, 3), dtype=torch.float32)
     cmp = torch.full_like(ref, 0.1)

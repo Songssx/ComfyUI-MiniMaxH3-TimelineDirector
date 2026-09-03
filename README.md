@@ -6,7 +6,7 @@
 
 The plugin splits any target duration into continuous segments and completes them in one ComfyUI
 execution: per-segment generation with one shared seed, direct continuation from the previous
-AV-latent tail, a linear `0→1` temporal mask, overlap removal, and final synchronized assembly. Extend the result by increasing
+AV-latent tail, adaptive Drift-Control video masking, Soft AV audio continuity, overlap removal, and final synchronized assembly. Extend the result by increasing
 the segment count—without generic Loop nodes or duplicated sampler chains. Practical length is limited
 only by local VRAM, RAM, disk space, and ComfyUI execution limits.
 
@@ -127,7 +127,7 @@ Adds **MiniMax-H3 Prompt Rewriter Omni (sees and hears)** so the same ordered me
 
 **MiniMax H3 Finite Segment Expansion** only validates prompts, segment count, and media
 assignments; it performs no sampling. Connect its plan to **MiniMax H3 Finite Segment Sampling**
-to build a standard acyclic graph for direct AV-latent continuation, linear `0→1` temporal masking,
+to build a standard acyclic graph for direct AV-latent continuation with adaptive Drift-Control video masking and Soft AV audio continuity,
 overlap removal, and ordered assembly. Every segment uses the same seed. No generic Loop nodes are required.
 
 [Download finite workflow](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
@@ -154,10 +154,21 @@ Generate long videos in overlapping segments. Use the previous segment's final s
 
 ### Finite direct-latent continuation
 
-Finite sampling carries the previous sampled AV latent tail directly into the next opening,
-avoids an RGB decode/re-encode round trip, and applies a `0→1` temporal noise ramp across the
-overlap. All segments use exactly the seed shown on the sampling node; the area after the overlap
-remains `1`. The old generic-loop helper nodes and PR #15923 dependency have been removed.
+Finite sampling carries the previous sampled AV latent tail directly into the next opening and
+avoids an RGB decode/re-encode round trip. Drift-Control is always active and has no user-facing mode
+selector. The requested overlap is aligned down to H3's legal temporal grid (for example, 24 becomes
+22 and 48 becomes 39), and that same actual value drives latent carry, decoded trimming, and assembly.
+The mask adapts both to the aligned overlap's video-token count and to the connected sampler's sigma
+schedule, including accelerated 4-step and 8-step schedules. It dynamically re-noises only the disposable video prefix while keeping the seam-side
+latent clean. When audio continuation is enabled, the carried overlap stays exact until its final eight
+audio-latent ticks, where a half-cosine Soft AV mask releases it into newly generated sound. Assembly
+replaces the preceding audio tail with this incoming Soft AV overlap so the transition is retained in the final output. All segments use
+exactly the seed shown on the sampling node. The old generic-loop helper nodes and PR #15923 dependency
+have been removed.
+
+Drift-Control AV is adapted from
+[ComfyUI-MiniMaxH3-Contex-Loop](https://github.com/ethanfel/ComfyUI-MiniMaxH3-Contex-Loop)
+under GPL-3.0. It remains experimental and is intended for same-shot long-chain comparisons.
 
 ## Credits
 

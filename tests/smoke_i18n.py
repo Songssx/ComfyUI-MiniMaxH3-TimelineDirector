@@ -13,6 +13,7 @@ EXPECTED_NODES = {
     "MiniMaxH3AddLatentGuide", "MiniMaxH3VisualDifferenceMetrics",
     "MiniMaxH3FiniteSegmentExpansion", "MiniMaxH3FiniteSegmentSampler",
     "MiniMaxH3FiniteLatentContinuation", "MiniMaxH3FiniteSegmentFinalize",
+    "MiniMaxH3FiniteAudioTrimTail",
 }
 
 
@@ -36,6 +37,7 @@ def main() -> None:
     for relative in (
         "__init__.py", "minimax_h3_timeline_director.py",
         "minimax_h3_finite_segments.py", "experimental_latent_guide.py",
+        "drift_control_av.py",
         "js/minimax_h3_timeline_director.js",
     ):
         source = (ROOT / relative).read_text(encoding="utf-8")

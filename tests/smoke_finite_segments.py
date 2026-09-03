@@ -7,6 +7,7 @@ import sys
 import types
 from pathlib import Path
 
+import torch
 from aiohttp import web
 from server import PromptServer
 
@@ -65,6 +66,7 @@ def main():
     sampler_input_ids = {item.id for item in sampler_schema.inputs}
     assert "increment_seed" not in sampler_input_ids
     assert "gradient_temporal_mask" not in sampler_input_ids
+    assert "continuation_mode" not in sampler_input_ids
 
     prompts = "\n--- SEGMENT ---\n".join(
         [_prompt("First"), _prompt("Second"), _prompt("Third")]
@@ -76,12 +78,13 @@ def main():
     finite_plan = planned[0]
     assert planned[1] == 39
     assert "performs no sampling" in planned[2]
-    assert "fixed latent continuation" not in finite_plan["prompts"][0]
-    assert "fixed latent continuation" in finite_plan["prompts"][1]
+    assert "carried latent continuation" not in finite_plan["prompts"][0]
+    assert "carried latent continuation" in finite_plan["prompts"][1]
 
     output = finite.MiniMaxH3FiniteSegmentSampler.execute(
         model=object(), clip=object(), vae=object(), audio_vae=object(),
-        finite_plan=finite_plan, sampler=object(), sigmas=object(), seed=100,
+        finite_plan=finite_plan, sampler=object(),
+        sigmas=torch.linspace(1.0, 0.0, 5), seed=100,
         continue_audio_latent=True, ref_image_size="match",
     )
     graph = output.expand
@@ -105,7 +108,11 @@ def main():
     assert "previous_latent" not in continuations[0][1]
     assert "previous_latent" in continuations[1][1]
     assert all("gradient_temporal_mask" not in item[1] for item in continuations)
-    assert "Guide mask ramps 0→1" in output[3]
+    assert all("continuation_mode" not in item[1] for item in continuations)
+    assert all(item[1]["trim_audio_head"] is False for item in by_type["MiniMaxH3FiniteSegmentFinalize"])
+    assert len(by_type["MiniMaxH3FiniteAudioTrimTail"]) == 2
+    assert "Drift-Control AV 39-frame" in output[3]
+    assert "Soft AV half-cosine release" in output[3]
     assert "all segments use seed 100" in output[3]
     assert all(
         node["class_type"] not in {
@@ -114,6 +121,63 @@ def main():
         }
         for node in graph.values()
     )
+
+    for steps in (8, 20):
+        drift_output = finite.MiniMaxH3FiniteSegmentSampler.execute(
+            model=object(), clip=object(), vae=object(), audio_vae=object(),
+            finite_plan=finite_plan, sampler=object(),
+            sigmas=torch.linspace(1.0, 0.0, steps + 1),
+            seed=100, continue_audio_latent=True, ref_image_size="match",
+        )
+        drift_continuations = [
+            node["inputs"] for node in drift_output.expand.values()
+            if node["class_type"] == "MiniMaxH3FiniteLatentContinuation"
+        ]
+        assert len(drift_continuations) == 3
+        assert all("continuation_mode" not in item for item in drift_continuations)
+        drift_finalizers = [
+            node["inputs"] for node in drift_output.expand.values()
+            if node["class_type"] == "MiniMaxH3FiniteSegmentFinalize"
+        ]
+        assert all(item["trim_audio_head"] is False for item in drift_finalizers)
+        assert sum(
+            node["class_type"] == "MiniMaxH3FiniteAudioTrimTail"
+            for node in drift_output.expand.values()
+        ) == 2
+        assert f"adapted to {steps} sampling steps" in drift_output[3]
+        assert "Soft AV half-cosine release" in drift_output[3]
+
+    short_planned = finite.MiniMaxH3FiniteSegmentExpansion.execute(
+        plan=_plan(), segment_prompts=prompts, segment_count=3,
+        overlap_frames=24, inject_continuity_instruction=True,
+    )
+    assert short_planned[1] == 22
+    short_output = finite.MiniMaxH3FiniteSegmentSampler.execute(
+        model=object(), clip=object(), vae=object(), audio_vae=object(),
+        finite_plan=short_planned[0], sampler=object(),
+        sigmas=torch.linspace(1.0, 0.0, 5), seed=100,
+        continue_audio_latent=True, ref_image_size="match",
+    )
+    assert "Drift-Control AV 22-frame" in short_output[3]
+    assert all(
+        node["inputs"]["overlap_frames"] == 22
+        for node in short_output.expand.values()
+        if node["class_type"] in {
+            "MiniMaxH3FiniteLatentContinuation",
+            "MiniMaxH3FiniteSegmentFinalize",
+            "MiniMaxH3FiniteAudioTrimTail",
+        }
+    )
+
+    sample_rate = 16000
+    accumulated = {
+        "waveform": torch.arange(sample_rate * 4, dtype=torch.float32).reshape(1, 1, -1),
+        "sample_rate": sample_rate,
+    }
+    tail_trimmed = finite.MiniMaxH3FiniteAudioTrimTail.execute(
+        accumulated, overlap_frames=48,
+    )[0]
+    assert tail_trimmed["waveform"].shape[-1] == sample_rate * 4 - round(39 / 24 * sample_rate)
     print("finite planning/sampling smoke test: PASS")
 
 
