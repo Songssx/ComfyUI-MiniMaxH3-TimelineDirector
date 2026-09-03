@@ -1,0 +1,734 @@
+{
+  "id": "b641c11e-2721-4c2a-9d83-fb32b522431c",
+  "revision": 1,
+  "last_node_id": 53,
+  "last_link_id": 41,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "CLIPLoader",
+      "pos": [
+        3081.570128468874,
+        -2313.43051663161
+      ],
+      "size": [
+        376.234375,
+        138
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "minimax_h3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "type": "minimax",
+        "device": "default"
+      }
+    },
+    {
+      "id": 3,
+      "type": "VAELoader",
+      "pos": [
+        3082.3358539050514,
+        -2120.8072383946915
+      ],
+      "size": [
+        381.9375,
+        86
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_fp16.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      }
+    },
+    {
+      "id": 8,
+      "type": "VAELoader",
+      "pos": [
+        3086.8938521823407,
+        -1984.5004477231396
+      ],
+      "size": [
+        374.609375,
+        86
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      }
+    },
+    {
+      "id": 35,
+      "type": "MiniMaxH3SigmaShift",
+      "pos": [
+        3606.4472338120127,
+        -2504.370607939949
+      ],
+      "size": [
+        311.3888888888923,
+        82
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 29
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "slot_index": 0,
+          "links": [
+            25,
+            26
+          ]
+        }
+      ],
+      "title": "MiniMaxH3SigmaShift",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "MiniMaxH3SigmaShift"
+      },
+      "widgets_values": [
+        12,
+        3
+      ],
+      "widgets_values_named": {
+        "shift_video": 12,
+        "shift_audio": 3
+      }
+    },
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        3079.5578837159023,
+        -2472.1608188705427
+      ],
+      "size": [
+        386.53595695287686,
+        82
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            29
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 13,
+      "type": "KSamplerSelect",
+      "pos": [
+        3588.533943687397,
+        -2167.031643139715
+      ],
+      "size": [
+        327.578125,
+        86
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 9,
+      "type": "BasicScheduler",
+      "pos": [
+        3582.256617314156,
+        -2366.020247849302
+      ],
+      "size": [
+        329.3125,
+        142
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "BasicScheduler"
+      },
+      "widgets_values": [
+        "simple",
+        8,
+        1
+      ],
+      "widgets_values_named": {
+        "scheduler": "simple",
+        "steps": 8,
+        "denoise": 1
+      }
+    },
+    {
+      "id": 30,
+      "type": "MiniMaxH3FiniteSegmentSampler",
+      "pos": [
+        3993.615730661398,
+        -2506.853793055645
+      ],
+      "size": [
+        595.973958333333,
+        540.555555555555
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 26
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 5
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "link": 6
+        },
+        {
+          "name": "finite_plan",
+          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "link": 33
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 8
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Last Sampled Latent",
+          "type": "LATENT",
+          "links": null
+        },
+        {
+          "name": "Merged Frames",
+          "type": "IMAGE",
+          "links": [
+            10
+          ]
+        },
+        {
+          "name": "Merged Audio",
+          "type": "AUDIO",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "Sampling Status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
+        "Node name for S&R": "MiniMaxH3FiniteSegmentSampler"
+      },
+      "widgets_values": [
+        358,
+        true,
+        "match"
+      ],
+      "widgets_values_named": {
+        "seed": 358,
+        "continue_audio_latent": true,
+        "ref_image_size": "match"
+      }
+    },
+    {
+      "id": 11,
+      "type": "MiniMaxH3TimelinePlanner",
+      "pos": [
+        3076.695508438692,
+        -1851.2151842115122
+      ],
+      "size": [
+        1191.734375,
+        804
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt_index",
+          "shape": 7,
+          "type": "INT",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Material Plan",
+          "type": "MINIMAX_H3_TIMELINE_PLAN",
+          "links": [
+            32
+          ]
+        },
+        {
+          "name": "Omni Media Bundle",
+          "type": "MINIMAX_H3_OMNI_MEDIA_BUNDLE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
+        "Node name for S&R": "MiniMaxH3TimelinePlanner"
+      },
+      "widgets_values": [
+        352,
+        640,
+        10,
+        "{\"version\":4,\"fps\":24,\"selection\":{\"start\":0,\"duration\":10},\"videoAudioEnabled\":true,\"videoClips\":[{\"id\":\"mtl0eigs-nf628r\",\"file\":\"minimax_h3_timeline_director/1788408763990_cqkeb_1分钟舞蹈.mp4\",\"name\":\"1分钟舞蹈.mp4\",\"start\":0,\"duration\":67.033008,\"trimStart\":0,\"sourceDuration\":67.033008,\"hasAudio\":true,\"referenceMode\":\"edit\",\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1788408763990_cqkeb_1分钟舞蹈_3d33923d4e6f2f30.mp4\",\"peaks\":[0.10154758393764496,0.4069969654083252,0.8878966569900513,1,0.650732159614563,1,1,0.861726701259613,1,1,1,1,1,1,1,0.6324687600135803,1,1,1,1,1,1,0.7570266127586365,1,1,1,0.7008165717124939,1,1,1,1,1,1,0.8534225821495056,1,1,1,0.705571711063385,1,1,1,1,1,1,0.7136378288269043,1,1,1,0.8102961778640747,1,1,1,0.9159484505653381,1,1,0.7243276238441467,1,1,1,0.7045987844467163,1,1,1,0.9857431054115295,1,1,1,0.8475322127342224,1,1,0.8609914183616638,1,1,1,1,1,1,1,1,1,1,0.7389540076255798,1,1,1,0.9975558519363403,1,1,1,1,1,1,0.8242731690406799,1,1,1,0.8635234832763672,1,1,1,0.9728438258171082,1,1,0.6890172362327576,1,1,1,0.6256895661354065,1,1,1,0.940784752368927,1,1,0.6343290209770203,1,1,1,1,1,1,1,1,1,1,0.6469393372535706,1,1,1,0.9665848612785339,1,1,1,0.8244117498397827,1,1,0.7622089385986328,1,1,1,0.7753651142120361,1,1,1,1,1,1,1,1,1,1,0.6822265386581421,1,1,1,0.7884454727172852,1,1,1,1,1,1,1,1,1,1,0.7572664022445679,1,1,1,1,1,1,0.733142077922821,1,0.9137241244316101,0.6990912556648254,0.3584822416305542,0.3796464204788208,0.14863745868206024]}],\"images\":[{\"id\":\"mtl416cp-x3p9mo\",\"file\":\"minimax_h3_timeline_director/1788414860887_n9qxk_ComfyUI_temp_jdhpq_00001_.png\",\"name\":\"ComfyUI_temp_jdhpq_00001_.png\",\"width\":1024,\"height\":1536}],\"audios\":[],\"segmentConfig\":{\"count\":0,\"segments\":[]}}",
+        ""
+      ],
+      "widgets_values_named": {
+        "width": 352,
+        "height": 640,
+        "generation_seconds": 10,
+        "timeline_data": "{\"version\":4,\"fps\":24,\"selection\":{\"start\":0,\"duration\":10},\"videoAudioEnabled\":true,\"videoClips\":[{\"id\":\"mtl0eigs-nf628r\",\"file\":\"minimax_h3_timeline_director/1788408763990_cqkeb_1分钟舞蹈.mp4\",\"name\":\"1分钟舞蹈.mp4\",\"start\":0,\"duration\":67.033008,\"trimStart\":0,\"sourceDuration\":67.033008,\"hasAudio\":true,\"referenceMode\":\"edit\",\"proxy\":\"minimax_h3_timeline_director/preview_proxies/1788408763990_cqkeb_1分钟舞蹈_3d33923d4e6f2f30.mp4\",\"peaks\":[0.10154758393764496,0.4069969654083252,0.8878966569900513,1,0.650732159614563,1,1,0.861726701259613,1,1,1,1,1,1,1,0.6324687600135803,1,1,1,1,1,1,0.7570266127586365,1,1,1,0.7008165717124939,1,1,1,1,1,1,0.8534225821495056,1,1,1,0.705571711063385,1,1,1,1,1,1,0.7136378288269043,1,1,1,0.8102961778640747,1,1,1,0.9159484505653381,1,1,0.7243276238441467,1,1,1,0.7045987844467163,1,1,1,0.9857431054115295,1,1,1,0.8475322127342224,1,1,0.8609914183616638,1,1,1,1,1,1,1,1,1,1,0.7389540076255798,1,1,1,0.9975558519363403,1,1,1,1,1,1,0.8242731690406799,1,1,1,0.8635234832763672,1,1,1,0.9728438258171082,1,1,0.6890172362327576,1,1,1,0.6256895661354065,1,1,1,0.940784752368927,1,1,0.6343290209770203,1,1,1,1,1,1,1,1,1,1,0.6469393372535706,1,1,1,0.9665848612785339,1,1,1,0.8244117498397827,1,1,0.7622089385986328,1,1,1,0.7753651142120361,1,1,1,1,1,1,1,1,1,1,0.6822265386581421,1,1,1,0.7884454727172852,1,1,1,1,1,1,1,1,1,1,0.7572664022445679,1,1,1,1,1,1,0.733142077922821,1,0.9137241244316101,0.6990912556648254,0.3584822416305542,0.3796464204788208,0.14863745868206024]}],\"images\":[{\"id\":\"mtl416cp-x3p9mo\",\"file\":\"minimax_h3_timeline_director/1788414860887_n9qxk_ComfyUI_temp_jdhpq_00001_.png\",\"name\":\"ComfyUI_temp_jdhpq_00001_.png\",\"width\":1024,\"height\":1536}],\"audios\":[],\"segmentConfig\":{\"count\":0,\"segments\":[]}}",
+        "minimax_h3_timeline": ""
+      }
+    },
+    {
+      "id": 43,
+      "type": "MiniMaxH3LongReferenceSegmentPlan",
+      "pos": [
+        4300.896125404738,
+        -1850.9051177472013
+      ],
+      "size": [
+        450.18019575830203,
+        470.4817236198767
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "plan",
+          "type": "MINIMAX_H3_TIMELINE_PLAN",
+          "link": 32
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Finite Segment Plan",
+          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "links": [
+            33
+          ]
+        },
+        {
+          "name": "Segment Count",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "Actual Overlap Frames",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "Planning Status",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
+        "Node name for S&R": "MiniMaxH3LongReferenceSegmentPlan"
+      },
+      "widgets_values": [
+        "subject_definitions:\n<Subject 1> is the young East Asian man from <Picture 1>, with short dark hair, a slim-to-average build, a clean-shaven face, and a calm neutral expression. He wears a fitted dark navy business suit, a white dress shirt, a dark navy tie, matching suit trousers, and polished black leather dress shoes. His facial identity, hairstyle, clothing, body proportions, and realistic appearance must remain consistent throughout the edited segment.\n<Picture 1> is the visual identity reference for the same single person, providing one full-body frontal view of <Subject 1>. It defines his face, hairstyle, suit, body proportions, and overall appearance for stable character replacement across the edited video.\n<Video 1> is the source video segment to be edited. It provides the complete original shot order, timing, camera movement, framing, blocking, action rhythm, environment, props, lighting, scene progression, background content, and the source character’s full motion performance.\n\nsummary:\n[video editing + reference generation] The target video is an edited version of <Video 1>. For each approximately 10-second source segment, the original target on-screen character from <Video 1> is replaced by <Subject 1> from <Picture 1>. The edit performs only a character replacement and motion transfer: <Subject 1> inherits the original target character’s actions, gestures, body movement, timing, blocking, and emotional performance, while the original background, environment, camera movement, lighting, props, scene structure, and all other visual content from <Video 1> remain preserved. The same prompt can be reused for every segmented clip of the source video.\n\nretention_analysis:\n<Subject 1> (appears wherever the original target character appears in the edited segment): attribute_transfer - <Subject 1>'s facial identity, hairstyle, dark navy suit, body proportions, and realistic human appearance are transferred onto the role and motion performance of the original target character.\n<Picture 1> (single-character visual identity reference): fully_preserved - the face, hairstyle, dark navy business suit, white shirt, dark tie, body proportions, and overall identity of the same single man remain stable across all camera angles and poses.\n<Video 1> (whole edited segment): fully_preserved - the original shot structure, cut timing, camera motion, framing, background, environment, lighting, props, scene geography, action choreography, secondary characters, and overall scene progression remain intact.\n\ndetailed_description:\nThe target video is a clean character-replacement edit based directly on <Video 1>. Treat each input clip as an approximately 10-second segment. Preserve the source video’s original scene in its existing form, including the established environment, background architecture or room, scenery, furniture, props, lighting direction, shadow behavior, reflections, color atmosphere, camera framing, lens perspective, depth of field, camera movement, cut timing, and environmental motion.\n\n[Shot 1] Across the full duration of the edited segment, replace the original target visible character in <Video 1> with <Subject 1>. <Subject 1> takes over the same screen role and occupies the same position in the scene as the source character. His center of mass, scale relative to the environment, body orientation, facing direction, eyeline, entry and exit timing, blocking path, and spatial relationship with surrounding objects and characters follow the source performance.\n\nTransfer the complete motion performance of the original target character from <Video 1> onto <Subject 1>. This includes all walking, running, standing, sitting, turning, bending, reaching, hand gestures, arm movement, head movement, facial reactions, posture changes, object interaction, interpersonal interaction, pauses, and other visible action phases present in the source segment. The action timing, rhythm, acceleration, deceleration, and physical intent remain synchronized with the original video.\n\nThroughout wide shots, medium shots, close-ups, profile angles, three-quarter views, rear views, moving-camera shots, partially occluded views, and fast motion, <Subject 1> remains the same single man from <Picture 1>. His short dark hair, facial identity, dark navy suit jacket, white dress shirt, dark tie, matching trousers, and black leather shoes stay visually consistent. His clothing follows the transferred movement naturally, including realistic suit-fabric folds, jacket movement, trouser deformation, and contact with the body during action.\n\nThe physical performance should follow <Video 1> rather than being restaged around the reference image. <Picture 1> supplies the replacement character’s visual identity, while <Video 1> remains the authoritative source for motion, pose, timing, camera relationship, and interaction. When the source character turns sideways or away from the camera, infer a coherent side or rear appearance from the same identity and suit established by <Picture 1>, maintaining one continuous character across all viewpoints.\n\nThe original background of <Video 1> remains visually consistent throughout the edit. All original non-target elements retain their existing appearance and motion, including scenery, walls, floors, furniture, vehicles, vegetation, objects, effects, secondary characters, extras, reflections, atmospheric elements, and environmental movement. When the source target character interacts with an object or another person, <Subject 1> performs the same interaction at the same location and timing within the original scene geometry.\n\nIf the original target character speaks, preserve the source performance timing, mouth-action rhythm, head motion, body language, and emotional intention, while presenting <Subject 1> as the visible performer. The resulting video should appear as the original <Video 1> segment with its target character naturally replaced by the suited man from <Picture 1>, with the original scene and motion structure otherwise maintained.\n\noverall_soundscape:\nPreserve the source segment’s original scene-level audio structure, including ambience, environmental sounds, physical action sounds, object interaction sounds, dialogue timing, and synchronization with the transferred motion. Audio remains aligned with the original temporal structure of <Video 1>.\n\nnon_diegetic_music:\nPreserve the original non-diegetic music, musical timing, rhythm, and transitions from <Video 1> when present, keeping the soundtrack synchronized with the original scene progression.\n",
+        48,
+        true
+      ],
+      "widgets_values_named": {
+        "prompt": "subject_definitions:\n<Subject 1> is the young East Asian man from <Picture 1>, with short dark hair, a slim-to-average build, a clean-shaven face, and a calm neutral expression. He wears a fitted dark navy business suit, a white dress shirt, a dark navy tie, matching suit trousers, and polished black leather dress shoes. His facial identity, hairstyle, clothing, body proportions, and realistic appearance must remain consistent throughout the edited segment.\n<Picture 1> is the visual identity reference for the same single person, providing one full-body frontal view of <Subject 1>. It defines his face, hairstyle, suit, body proportions, and overall appearance for stable character replacement across the edited video.\n<Video 1> is the source video segment to be edited. It provides the complete original shot order, timing, camera movement, framing, blocking, action rhythm, environment, props, lighting, scene progression, background content, and the source character’s full motion performance.\n\nsummary:\n[video editing + reference generation] The target video is an edited version of <Video 1>. For each approximately 10-second source segment, the original target on-screen character from <Video 1> is replaced by <Subject 1> from <Picture 1>. The edit performs only a character replacement and motion transfer: <Subject 1> inherits the original target character’s actions, gestures, body movement, timing, blocking, and emotional performance, while the original background, environment, camera movement, lighting, props, scene structure, and all other visual content from <Video 1> remain preserved. The same prompt can be reused for every segmented clip of the source video.\n\nretention_analysis:\n<Subject 1> (appears wherever the original target character appears in the edited segment): attribute_transfer - <Subject 1>'s facial identity, hairstyle, dark navy suit, body proportions, and realistic human appearance are transferred onto the role and motion performance of the original target character.\n<Picture 1> (single-character visual identity reference): fully_preserved - the face, hairstyle, dark navy business suit, white shirt, dark tie, body proportions, and overall identity of the same single man remain stable across all camera angles and poses.\n<Video 1> (whole edited segment): fully_preserved - the original shot structure, cut timing, camera motion, framing, background, environment, lighting, props, scene geography, action choreography, secondary characters, and overall scene progression remain intact.\n\ndetailed_description:\nThe target video is a clean character-replacement edit based directly on <Video 1>. Treat each input clip as an approximately 10-second segment. Preserve the source video’s original scene in its existing form, including the established environment, background architecture or room, scenery, furniture, props, lighting direction, shadow behavior, reflections, color atmosphere, camera framing, lens perspective, depth of field, camera movement, cut timing, and environmental motion.\n\n[Shot 1] Across the full duration of the edited segment, replace the original target visible character in <Video 1> with <Subject 1>. <Subject 1> takes over the same screen role and occupies the same position in the scene as the source character. His center of mass, scale relative to the environment, body orientation, facing direction, eyeline, entry and exit timing, blocking path, and spatial relationship with surrounding objects and characters follow the source performance.\n\nTransfer the complete motion performance of the original target character from <Video 1> onto <Subject 1>. This includes all walking, running, standing, sitting, turning, bending, reaching, hand gestures, arm movement, head movement, facial reactions, posture changes, object interaction, interpersonal interaction, pauses, and other visible action phases present in the source segment. The action timing, rhythm, acceleration, deceleration, and physical intent remain synchronized with the original video.\n\nThroughout wide shots, medium shots, close-ups, profile angles, three-quarter views, rear views, moving-camera shots, partially occluded views, and fast motion, <Subject 1> remains the same single man from <Picture 1>. His short dark hair, facial identity, dark navy suit jacket, white dress shirt, dark tie, matching trousers, and black leather shoes stay visually consistent. His clothing follows the transferred movement naturally, including realistic suit-fabric folds, jacket movement, trouser deformation, and contact with the body during action.\n\nThe physical performance should follow <Video 1> rather than being restaged around the reference image. <Picture 1> supplies the replacement character’s visual identity, while <Video 1> remains the authoritative source for motion, pose, timing, camera relationship, and interaction. When the source character turns sideways or away from the camera, infer a coherent side or rear appearance from the same identity and suit established by <Picture 1>, maintaining one continuous character across all viewpoints.\n\nThe original background of <Video 1> remains visually consistent throughout the edit. All original non-target elements retain their existing appearance and motion, including scenery, walls, floors, furniture, vehicles, vegetation, objects, effects, secondary characters, extras, reflections, atmospheric elements, and environmental movement. When the source target character interacts with an object or another person, <Subject 1> performs the same interaction at the same location and timing within the original scene geometry.\n\nIf the original target character speaks, preserve the source performance timing, mouth-action rhythm, head motion, body language, and emotional intention, while presenting <Subject 1> as the visible performer. The resulting video should appear as the original <Video 1> segment with its target character naturally replaced by the suited man from <Picture 1>, with the original scene and motion structure otherwise maintained.\n\noverall_soundscape:\nPreserve the source segment’s original scene-level audio structure, including ambience, environmental sounds, physical action sounds, object interaction sounds, dialogue timing, and synchronization with the transferred motion. Audio remains aligned with the original temporal structure of <Video 1>.\n\nnon_diegetic_music:\nPreserve the original non-diegetic music, musical timing, rhythm, and transitions from <Video 1> when present, keeping the soundtrack synchronized with the original scene progression.\n",
+        "overlap_frames": 48,
+        "slice_reference_audio": true
+      }
+    },
+    {
+      "id": 23,
+      "type": "CreateVideo",
+      "pos": [
+        4622.51559726682,
+        -2487.080209580756
+      ],
+      "size": [
+        268.7373737373737,
+        126
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 10
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24,
+        8,
+        "sRGB"
+      ],
+      "widgets_values_named": {
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB"
+      }
+    },
+    {
+      "id": 29,
+      "type": "SaveVideo",
+      "pos": [
+        4976.873019318915,
+        -2502.919043834301
+      ],
+      "size": [
+        2071.8870810376393,
+        3889.067420068435
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "video/H3_finite_segments",
+        "mp4",
+        "h264",
+        "auto",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "video/H3_finite_segments",
+        "format": "mp4",
+        "format.codec": "h264",
+        "format.codec.encoding": "auto",
+        "codec": "auto"
+      }
+    }
+  ],
+  "links": [
+    [
+      4,
+      2,
+      0,
+      30,
+      1,
+      "CLIP"
+    ],
+    [
+      5,
+      3,
+      0,
+      30,
+      2,
+      "VAE"
+    ],
+    [
+      6,
+      8,
+      0,
+      30,
+      3,
+      "VAE"
+    ],
+    [
+      8,
+      13,
+      0,
+      30,
+      5,
+      "SAMPLER"
+    ],
+    [
+      9,
+      9,
+      0,
+      30,
+      6,
+      "SIGMAS"
+    ],
+    [
+      10,
+      30,
+      1,
+      23,
+      0,
+      "IMAGE"
+    ],
+    [
+      11,
+      30,
+      2,
+      23,
+      1,
+      "AUDIO"
+    ],
+    [
+      12,
+      23,
+      0,
+      29,
+      0,
+      "VIDEO"
+    ],
+    [
+      25,
+      35,
+      0,
+      9,
+      0,
+      "MODEL"
+    ],
+    [
+      26,
+      35,
+      0,
+      30,
+      0,
+      "MODEL"
+    ],
+    [
+      29,
+      1,
+      0,
+      35,
+      0,
+      "MODEL"
+    ],
+    [
+      32,
+      11,
+      0,
+      43,
+      0,
+      "MINIMAX_H3_TIMELINE_PLAN"
+    ],
+    [
+      33,
+      43,
+      0,
+      30,
+      4,
+      "MINIMAX_H3_FINITE_SEGMENT_PLAN"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.573085533011682,
+      "offset": [
+        -2785.2881105379934,
+        2931.824081313305
+      ]
+    },
+    "frontendVersion": "1.51.9",
+    "anomalous_hashes": {
+      "3_minimax_h3_video_vae_fp16.safetensors": {
+        "hash": "",
+        "size": 5207808496
+      },
+      "8_minimax_h3_audio_vae_fp32.safetensors": {
+        "hash": "",
+        "size": 605254808
+      },
+      "1_minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors": {
+        "hash": "",
+        "size": 20980178976
+      }
+    },
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

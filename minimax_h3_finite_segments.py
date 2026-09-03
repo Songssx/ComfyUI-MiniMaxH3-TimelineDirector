@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import re
 
 from comfy_api.latest import io
@@ -19,6 +20,7 @@ from .drift_control_av import (
 )
 from .minimax_h3_timeline_director import (
     TimelinePlan,
+    _aligned_h3_length,
     _require_timeline_plan,
     _timeline_for_prompt_index,
 )
@@ -83,6 +85,173 @@ def _plan_for_segment(plan, segment_number: int):
     return result
 
 
+def _finite_plan_for_segment(finite: dict, segment_number: int):
+    segment_plans = finite.get("segment_plans")
+    if isinstance(segment_plans, list):
+        index = int(segment_number) - 1
+        if index < 0 or index >= len(segment_plans):
+            raise ValueError(f"Segment {segment_number} has no material plan")
+        return copy.deepcopy(_require_timeline_plan(segment_plans[index]))
+    return _plan_for_segment(finite["source_plan"], segment_number)
+
+
+def _synchronized_audio_assets(
+    assets: list, source_offset_seconds: float, window_seconds: float,
+) -> list[dict]:
+    """Slice long standalone audio on the same clock as the source video."""
+
+    sliced: list[dict] = []
+    for raw in assets:
+        if not isinstance(raw, dict) or not raw.get("file"):
+            continue
+        asset = copy.deepcopy(raw)
+        base_start = max(0.0, float(asset.get("trimStart") or 0.0))
+        base_duration = max(0.0, float(asset.get("duration") or 0.0))
+        if base_duration <= source_offset_seconds:
+            continue
+        asset["trimStart"] = base_start + source_offset_seconds
+        asset["duration"] = min(window_seconds, base_duration - source_offset_seconds)
+        sliced.append(asset)
+    return sliced
+
+
+def _prepare_long_reference_plan(
+    plan, prompt: str, overlap_frames: int, slice_reference_audio: bool,
+):
+    """Build per-segment video references without materializing clips."""
+
+    source = _require_timeline_plan(plan)
+    if source.get("prompt_index") is not None:
+        raise ValueError(
+            "Long reference segmentation requires the complete material plan; "
+            "leave Prompt Index disconnected"
+        )
+    prompt = str(prompt or "").strip()
+    if not prompt:
+        raise ValueError("The shared prompt cannot be empty")
+
+    timeline = source["timeline"]
+    clips = [
+        item for item in timeline.get("videoClips", [])
+        if isinstance(item, dict) and item.get("file")
+    ]
+    if len(clips) > 1:
+        raise ValueError(
+            "Long reference segmentation currently accepts at most one timeline video"
+        )
+    clip = clips[0] if clips else None
+    audio_assets = [
+        item for item in timeline.get("audios", [])
+        if isinstance(item, dict) and item.get("file")
+    ]
+    video_duration = (
+        max(0.0, float(clip.get("duration") or 0.0)) if clip else 0.0
+    )
+    audio_duration = max(
+        (max(0.0, float(item.get("duration") or 0.0)) for item in audio_assets),
+        default=0.0,
+    )
+    source_duration = max(video_duration, audio_duration)
+    total_frames = max(0, round(source_duration * H3_FPS))
+    if total_frames < 5:
+        raise ValueError(
+            "Upload a timeline video or standalone audio containing at least 5 frames of time"
+        )
+
+    segment_seconds = float(source.get("generation_seconds") or 0.0)
+    if segment_seconds <= 0:
+        raise ValueError(
+            "The Material Planner generation duration must be greater than zero"
+        )
+    segment_frames = _aligned_h3_length(segment_seconds)
+    actual_overlap = _valid_guide_frames(int(overlap_frames))
+    if actual_overlap >= segment_frames:
+        raise ValueError(
+            f"The actual {actual_overlap}-frame overlap must be shorter than the "
+            f"{segment_frames}-frame segment"
+        )
+    stride_frames = segment_frames - actual_overlap
+    segment_count = 1 + max(
+        0, math.ceil((total_frames - segment_frames) / stride_frames)
+    )
+    starts = [index * stride_frames for index in range(segment_count)]
+    assembled_frames = segment_frames + (segment_count - 1) * stride_frames
+    trim_tail_frames = max(0, assembled_frames - total_frames)
+
+    base_trim = max(0.0, float(clip.get("trimStart") or 0.0)) if clip else 0.0
+    video_frames = max(0, round(video_duration * H3_FPS))
+    segment_plans = []
+    for start_frame in starts:
+        available_frames = min(segment_frames, total_frames - start_frame)
+        window_seconds = available_frames / H3_FPS
+        segment_timeline = copy.deepcopy(timeline)
+        if clip and start_frame < video_frames:
+            available_video_frames = min(
+                segment_frames, video_frames - start_frame
+            )
+            segment_clip = copy.deepcopy(clip)
+            segment_clip["start"] = 0.0
+            segment_clip["trimStart"] = base_trim + start_frame / H3_FPS
+            segment_clip["duration"] = available_video_frames / H3_FPS
+            # Preserve the purpose selected in the Material Planner. Character-
+            # swap workflows should select Editable Reference there; Fixed Guide
+            # and Boundary Only intentionally retain their anchoring behavior.
+            segment_timeline["videoClips"] = [segment_clip]
+        else:
+            # The longest standalone audio may outlive the reference video, or
+            # an audio-driven digital-human workflow may contain no video at all.
+            # Do not repeat/freeze a shorter video into those later windows.
+            segment_timeline["videoClips"] = []
+        segment_timeline["selection"] = {
+            "start": 0.0,
+            "duration": segment_frames / H3_FPS,
+        }
+        segment_timeline["segmentConfig"] = {"count": 0, "segments": []}
+        if slice_reference_audio:
+            segment_timeline["audios"] = _synchronized_audio_assets(
+                list(timeline.get("audios") or []),
+                start_frame / H3_FPS,
+                window_seconds,
+            )
+
+        segment_plan = copy.deepcopy(source)
+        segment_plan["timeline"] = segment_timeline
+        segment_plan["generation_seconds"] = segment_frames / H3_FPS
+        segment_plan["length"] = segment_frames
+        segment_plan["prompt_index"] = None
+        segment_plan["segment_count"] = segment_count
+        segment_plans.append(segment_plan)
+
+    return {
+        "type": "minimax_h3_finite_segment_plan",
+        "version": 2,
+        "mode": "long_reference_auto_segments",
+        "source_plan": copy.deepcopy(source),
+        "segment_plans": segment_plans,
+        "prompts": [prompt] * segment_count,
+        "segment_count": segment_count,
+        "requested_overlap_frames": int(overlap_frames),
+        "overlap_frames": actual_overlap,
+        "segment_frames": segment_frames,
+        "stride_frames": stride_frames,
+        "assembled_frames_before_trim": assembled_frames,
+        "trim_tail_frames": trim_tail_frames,
+        "target_output_frames": total_frames,
+        "source_duration_seconds": source_duration,
+        "reference_mode": (
+            str(clip.get("referenceMode") or "guide") if clip else "none"
+        ),
+        "video_duration_seconds": video_duration,
+        "audio_duration_seconds": audio_duration,
+        "duration_source": (
+            "video_and_audio"
+            if video_duration > 0 and audio_duration > 0
+            else "video" if video_duration > 0 else "audio"
+        ),
+        "slice_reference_audio": bool(slice_reference_audio),
+    }
+
+
 def _prepare_finite_plan(
     plan,
     segment_prompts: str,
@@ -130,6 +299,11 @@ def _require_finite_plan(value):
     prompts = value.get("prompts")
     if count < 1 or not isinstance(prompts, list) or len(prompts) != count:
         raise ValueError("The finite segment plan is incomplete; run Finite Segment Expansion again")
+    segment_plans = value.get("segment_plans")
+    if segment_plans is not None and (
+        not isinstance(segment_plans, list) or len(segment_plans) != count
+    ):
+        raise ValueError("The long reference plan has incomplete per-segment materials")
     return value
 
 
@@ -180,6 +354,73 @@ class MiniMaxH3FiniteSegmentExpansion(io.ComfyNode):
             f"({overlap / H3_FPS:.3f}s). This node performs no sampling."
         )
         return io.NodeOutput(finite, overlap, status)
+
+
+class MiniMaxH3LongReferenceSegmentPlan(io.ComfyNode):
+    """Automatically slice one long reference for a shared prompt."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3LongReferenceSegmentPlan",
+            display_name="MiniMax H3 Long Reference Auto Segmentation",
+            category="MiniMax H3/Long Video",
+            description=(
+                "Use the Material Planner generation duration to split long reference media. "
+                "Audio-only plans follow the longest standalone audio; video-plus-audio "
+                "plans follow whichever is longer. Video purpose is preserved, one prompt "
+                "is reused, and standalone audio can be sliced on the same clock."
+            ),
+            inputs=[
+                TimelinePlan.Input("plan", display_name="Material Plan"),
+                io.String.Input("prompt", multiline=True),
+                io.Int.Input(
+                    "overlap_frames", display_name="Overlap Frames", default=48,
+                    min=1, max=362,
+                    tooltip="Rounded down to a valid 1 or 5/22/39/56… frame count.",
+                ),
+                io.Boolean.Input(
+                    "slice_reference_audio", display_name="Slice Standalone Audio", default=True,
+                    tooltip=(
+                        "On: long standalone audio follows every video slice for lip sync. "
+                        "Off: each segment reuses the complete standalone audio as a timbre reference."
+                    ),
+                ),
+            ],
+            outputs=[
+                FiniteSegmentPlan.Output(display_name="Finite Segment Plan"),
+                io.Int.Output(display_name="Segment Count"),
+                io.Int.Output(display_name="Actual Overlap Frames"),
+                io.String.Output(display_name="Planning Status"),
+            ],
+        )
+
+    @classmethod
+    def execute(
+        cls, plan, prompt, overlap_frames, slice_reference_audio=True,
+    ):
+        finite = _prepare_long_reference_plan(
+            plan, prompt, overlap_frames, bool(slice_reference_audio),
+        )
+        purpose = {
+            "guide": "Fixed Guide",
+            "edit": "Editable Reference",
+            "boundary": "Boundary Only",
+            "none": "audio-driven",
+        }.get(finite["reference_mode"], finite["reference_mode"])
+        status = (
+            f"Split the {finite['source_duration_seconds']:.3f}s longest media span "
+            f"({finite['duration_source']}) into "
+            f"{finite['segment_count']} overlapping {purpose} segments using the "
+            f"Material Planner duration; each segment generates "
+            f"{finite['segment_frames']} frames, advances "
+            f"{finite['stride_frames']} frames, and reuses the identical prompt. "
+            f"Actual overlap is {finite['overlap_frames']} frames; the final "
+            f"{finite['trim_tail_frames']} excess tail frames will be removed."
+        )
+        return io.NodeOutput(
+            finite, finite["segment_count"], finite["overlap_frames"], status
+        )
 
 
 class MiniMaxH3FiniteLatentContinuation(io.ComfyNode):
@@ -315,6 +556,47 @@ class MiniMaxH3FiniteAudioTrimTail(io.ComfyNode):
         return io.NodeOutput(output)
 
 
+class MiniMaxH3FiniteOutputTrim(io.ComfyNode):
+    """Trim auto-segment padding back to the longest source-media duration."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteOutputTrim",
+            display_name="MiniMax H3 Finite Output Trim (Internal)",
+            category="MiniMax H3/Internal",
+            is_dev_only=True,
+            inputs=[
+                io.Image.Input("images"),
+                io.Audio.Input("audio"),
+                io.Int.Input("output_frames", default=5, min=1, force_input=True),
+            ],
+            outputs=[
+                io.Image.Output(display_name="Trimmed Frames"),
+                io.Audio.Output(display_name="Trimmed Audio"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, images, audio, output_frames):
+        frame_count = int(output_frames)
+        if int(images.shape[0]) < frame_count:
+            raise ValueError(
+                f"Generated output has only {images.shape[0]} frames; "
+                f"cannot restore a {frame_count}-frame source duration"
+            )
+        trimmed_images = images[:frame_count].clone()
+        trimmed_audio = audio
+        waveform = audio.get("waveform") if isinstance(audio, dict) else None
+        sample_rate = int(audio.get("sample_rate", 0)) if isinstance(audio, dict) else 0
+        if waveform is not None and sample_rate > 0:
+            output_samples = round((frame_count / H3_FPS) * sample_rate)
+            if waveform.shape[-1] > output_samples:
+                trimmed_audio = dict(audio)
+                trimmed_audio["waveform"] = waveform[..., :output_samples].clone()
+        return io.NodeOutput(trimmed_images, trimmed_audio)
+
+
 class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
     """Expand a finite plan into a standard acyclic sampling graph."""
 
@@ -373,7 +655,7 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
             encoder = graph.node(
                 "MiniMaxH3TimelineEncoder", id=f"encode_{number}",
                 clip=clip, vae=vae, audio_vae=audio_vae,
-                plan=_plan_for_segment(finite["source_plan"], number),
+                plan=_finite_plan_for_segment(finite, number),
                 prompt=prompt, ref_image_size=ref_image_size,
             )
             continuation_inputs = {
@@ -432,6 +714,15 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
             previous_latent = sampled.out(0)
             last_sampled = sampled.out(0)
 
+        target_output_frames = int(finite.get("target_output_frames") or 0)
+        if target_output_frames > 0:
+            output_trim = graph.node(
+                "MiniMaxH3FiniteOutputTrim", id="trim_auto_segment_output",
+                images=merged_images, audio=merged_audio,
+                output_frames=target_output_frames,
+            )
+            merged_images, merged_audio = output_trim.out(0), output_trim.out(1)
+
         mode_status = (
             f"Drift-Control AV {overlap}-frame mask adapted to {steps} sampling steps; overlap audio uses an 8-tick Soft AV half-cosine release"
             if continue_audio_latent
@@ -442,6 +733,13 @@ class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):
             f"all segments use seed {int(seed)}; {mode_status}; "
             f"audio latent {'continues' if continue_audio_latent else 'does not continue'}."
         )
+        if target_output_frames > 0:
+            trim_tail_frames = int(finite.get("trim_tail_frames") or 0)
+            status += (
+                f" The final {trim_tail_frames} excess tail frames and matching "
+                f"audio samples are removed; output is exactly the source-media "
+                f"duration ({target_output_frames} frames)."
+            )
         return io.NodeOutput(
             last_sampled, merged_images, merged_audio, status, expand=graph.finalize()
         )

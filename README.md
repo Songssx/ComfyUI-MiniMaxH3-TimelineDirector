@@ -51,6 +51,7 @@ An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference
 - Silent low-resolution monitoring proxies up to `480×270 / 12fps`.
 - Multi-select, external file drop, deletion, and drag reordering for image/audio bins.
 - Stable `<Picture N>`, `<Video N>`, and `<Audio N>` ordering from UI to H3 inputs.
+- Automatic long-reference segmentation for character replacement and lip-sync with one shared prompt.
 - Decode-time resizing to the node's `width × height` for VRAM protection.
 - Separate merged outputs for timeline soundtracks and standalone reference audio.
 - Timeline state is serialized into the ComfyUI workflow JSON.
@@ -63,6 +64,7 @@ An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference
 | **MiniMax H3 Omni Media-Bundle Prompt Bridge** | Sends the bundle to an installed Prompt Rewriter Omni backend and returns only `rewritten_prompt`. |
 | **MiniMax H3 Plan Encoder** | Combines the plan, prompt, CLIP, and VAEs into H3 conditioning and latent outputs. |
 | **MiniMax H3 Finite Segment Expansion** | Creates a lightweight long-video plan from prompt/material ordinals without sampling. |
+| **MiniMax H3 Long Reference Auto Segmentation** | Uses the Material Planner duration to slice one long video and synchronized audio while preserving the selected video purpose and reusing one prompt. |
 | **MiniMax H3 Finite Segment Sampling** | Expands an acyclic graph for direct-latent continuation, masking, sampling, deduplication, and assembly. |
 | **MiniMax H3 Timeline Director (Compatibility)** | Preserves the original all-in-one workflow and older saved workflows. |
 
@@ -133,6 +135,31 @@ overlap removal, and ordered assembly. Every segment uses the same seed. No gene
 [Download finite workflow](example_workflows/MiniMax时间线插件内置有限分段工作流.json) ·
 [Chinese guide](docs/FINITE_SEGMENT_EXPANSION_CN.md) ·
 [Chinese prompt specification](docs/MiniMax_H3_循环分段提示词_Agent规范.md)
+
+### Long-video character replacement and lip sync
+
+Place one complete long video in the Material Planner, or use identity pictures plus a standalone
+long driving-audio track without video. Connect the plan and one shared prompt to **MiniMax H3 Long Reference
+Auto Segmentation**, then connect its output directly to **Finite Segment Sampling**. Finite Segment
+Expansion and manually repeated prompts are not required.
+
+The node does not use the cyan single-run selection as its total range. An image-plus-audio plan follows
+the longest standalone audio. When video and standalone audio coexist, the longer available duration sets
+the total range, and the shorter medium stops participating after it ends instead of being looped or frozen.
+At most one timeline video is accepted. Each segment inherits its generation duration from the Material Planner. Every video window
+preserves the source video's selected **Fixed Guide**, **Editable Reference**, or **Boundary Only** purpose.
+Use Editable Reference for character replacement; Fixed Guide intentionally anchors the original frames
+and will usually prevent replacement. Images retain their order in every segment. With **Slice Standalone
+Audio** enabled, long audio follows the same source offsets and overlaps for lip sync; when disabled,
+the full audio is reused in every segment as a short timbre reference.
+
+For example, a 60-second source with an approximately 10-second segment duration and a requested
+48-frame overlap becomes seven segments with H3's aligned 39-frame overlap. After assembly, any final
+H3-grid padding is trimmed back to the exact 1440-frame source duration. Picture, Video, and Audio
+ordinals restart at one in every segment, so the same prompt can be reused verbatim.
+
+[Long-video motion-transfer / character-replacement / digital-human example](example_workflows/MinimaxH3长视频动作迁移人物替换+长视频数字人工作流.json) ·
+[Chinese long-reference auto-segmentation guide](docs/LONG_REFERENCE_AUTO_SEGMENT_CN.md)
 
 ## Basic usage
 

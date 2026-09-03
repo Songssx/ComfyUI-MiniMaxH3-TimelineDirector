@@ -1347,6 +1347,28 @@ class TimelineDirectorUI {
 app.registerExtension({
   name: "MiniMaxH3.TimelineDirector",
   async beforeRegisterNodeDef(nodeType,nodeData) {
+    if(nodeData.name==="MiniMaxH3LongReferenceSegmentPlan"){
+      const originalConfigure=nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure=function(info){
+        const result=originalConfigure?.apply(this,arguments);
+        // Local preview builds exposed Segment Duration between Prompt and
+        // Overlap Frames.  Restore the remaining values by name/legacy index
+        // after that widget was removed, so saved workflows do not shift.
+        const legacy=Array.isArray(info?.widgets_values)&&info.widgets_values.length>=4?info.widgets_values:null;
+        const named=info?.widgets_values_named;
+        const values={
+          prompt:named?.prompt??legacy?.[0],
+          overlap_frames:named?.overlap_frames??legacy?.[2],
+          slice_reference_audio:named?.slice_reference_audio??legacy?.[3],
+        };
+        for(const [name,value] of Object.entries(values)){
+          const widget=this.widgets?.find(item=>item.name===name);
+          if(widget&&value!==undefined)widget.value=value;
+        }
+        return result;
+      };
+      return;
+    }
     if(nodeData.name==="MiniMaxH3FiniteSegmentSampler"){
       const originalConfigure=nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure=function(info){

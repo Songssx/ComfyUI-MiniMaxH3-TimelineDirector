@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+### Added
+
+- Add `MiniMax H3 Long Reference Auto Segmentation` for long-form character replacement and lip-sync workflows. It uses the Material Planner generation duration to slice long media, supports image-plus-audio plans without video, and uses the longer span when video and standalone audio coexist. Video windows preserve the selected Fixed Guide / Editable Reference / Boundary Only purpose; shorter media stops participating after it ends. One identical prompt is reused across all segments, and final H3 padding is trimmed back to the longest source span at 24fps.
+- Include a lightweight long-video motion-transfer, character-replacement, and digital-human example workflow using the automatic segmentation path.
+
 ### Changed
 
 - Make adaptive Drift-Control the only finite-segment video continuation path and remove the public continuation-mode selector. The mask derives its temporal prefix from the H3-aligned overlap selected by the user, preserves up to four clean-boundary taper steps, and follows the connected external sigma schedule, including accelerated 4-step and 8-step configurations. Continued audio uses Soft AV: its final eight latent ticks follow a half-cosine release, and assembly gives the incoming segment ownership of the same aligned overlap so the transition reaches the final soundtrack.

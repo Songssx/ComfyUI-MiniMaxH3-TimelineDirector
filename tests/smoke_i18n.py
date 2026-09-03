@@ -12,8 +12,9 @@ EXPECTED_NODES = {
     "MiniMaxH3TimelineEncoder", "MiniMaxH3OmniPromptBridge",
     "MiniMaxH3AddLatentGuide", "MiniMaxH3VisualDifferenceMetrics",
     "MiniMaxH3FiniteSegmentExpansion", "MiniMaxH3FiniteSegmentSampler",
+    "MiniMaxH3LongReferenceSegmentPlan",
     "MiniMaxH3FiniteLatentContinuation", "MiniMaxH3FiniteSegmentFinalize",
-    "MiniMaxH3FiniteAudioTrimTail",
+    "MiniMaxH3FiniteAudioTrimTail", "MiniMaxH3FiniteOutputTrim",
 }
 
 
