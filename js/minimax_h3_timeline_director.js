@@ -848,6 +848,14 @@ class TimelineDirectorUI {
       const widgetHost = this.root.closest?.(".dom-widget") || this.root.parentElement;
       if (widgetHost) {
         widgetHost.classList.add("m3td-widget-host");
+        // The frontend can leave a stale inline `width` on the .dom-widget host
+        // (observed 321px, captured before the node reached its real width) and
+        // keeps re-applying it on every layout pass, which leaves the right side
+        // of the node uncovered. It never manages min-width, so pin the width
+        // through min-width to match the widget's own computeSize().
+        const hostWidth = Math.max(100, (Number(this.node.size?.[0]) || 860) - 20);
+        widgetHost.style.setProperty("width", `${hostWidth}px`, "important");
+        widgetHost.style.setProperty("min-width", `${hostWidth}px`, "important");
         widgetHost.style.setProperty("height", `${desiredHeight}px`, "important");
         widgetHost.style.setProperty("min-height", `${desiredHeight}px`, "important");
         widgetHost.style.setProperty("max-height", "none", "important");

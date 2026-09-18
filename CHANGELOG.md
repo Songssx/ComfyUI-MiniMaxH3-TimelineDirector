@@ -25,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 - Eliminate progressive blur, white flashes, and visible joins at two-stage long-video boundaries by applying continuation consistently at both resolution stages.
 - Keep locked digital-human audio on the native AV mask/sigma path through both SelfLift stages and restore one continuous original waveform during final assembly.
+- Preserve the PR #9 DOM-widget host width pin while integrating the two-stage Material Planner UI.
 
 ## [0.7.0] - 2026-09-15
 

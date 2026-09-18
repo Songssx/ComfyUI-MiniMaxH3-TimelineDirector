@@ -33,6 +33,8 @@ def main() -> None:
     used_keys = set(re.findall(r'\btr\("([A-Za-z0-9_]+)"', javascript))
     missing = used_keys - set(en_timeline)
     assert not missing, f"Timeline translation keys are missing: {sorted(missing)}"
+    assert 'widgetHost.style.setProperty("width", `${hostWidth}px`, "important")' in javascript
+    assert 'widgetHost.style.setProperty("min-width", `${hostWidth}px`, "important")' in javascript
 
     for relative in (
         "__init__.py", "minimax_h3_timeline_director.py",
