@@ -282,6 +282,53 @@ def main():
     assert exact_images.shape[0] == 1440
     assert exact_images[-1].item() == 1439
     assert exact_audio["waveform"].shape[-1] == sample_rate * 60
+
+    # Native Start/End Loop integration exposes one segment at a time and
+    # carries only the state required by the following iteration.
+    loop_classes = {
+        "MiniMaxH3FiniteLoopInitialize",
+        "MiniMaxH3FiniteLoopSegment",
+        "MiniMaxH3FiniteLoopPrepare",
+        "MiniMaxH3FiniteLoopAccumulate",
+        "MiniMaxH3FiniteLoopOutput",
+    }
+    assert loop_classes.issubset(sys.modules["minimax_h3_finite_smoke"].NODE_CLASS_MAPPINGS)
+    loop_state, loop_count = finite.MiniMaxH3FiniteLoopInitialize.execute(finite_plan)
+    assert loop_count == 3 and loop_state["next_iteration"] == 0
+    selected = finite.MiniMaxH3FiniteLoopSegment.execute(finite_plan, 1)
+    assert selected[1] == finite_plan["prompts"][1]
+    assert selected[2] == 39
+
+    prepared = finite.MiniMaxH3FiniteLoopPrepare.execute(
+        finite_plan=finite_plan, loop_state=loop_state,
+        segment_plan=finite._finite_plan_for_segment(finite_plan, 1),
+        positive=object(), target_latent=object(), model=object(),
+        sigmas=torch.linspace(1.0, 0.0, 5), vae=object(), audio_vae=object(),
+        iteration_index=0, continue_audio_latent=True,
+    )
+    assert any(
+        node["class_type"] == "MiniMaxH3FiniteLatentContinuation"
+        for node in prepared.expand.values()
+    )
+
+    segment_images = torch.ones((60, 1, 1, 1), dtype=torch.float32)
+    segment_audio = {
+        "waveform": torch.zeros((1, 2, sample_rate * 3)),
+        "sample_rate": sample_rate,
+    }
+    for index in range(3):
+        loop_state, merged_loop_images, merged_loop_audio = finite.MiniMaxH3FiniteLoopAccumulate.execute(
+            finite_plan=finite_plan, loop_state=loop_state,
+            sampled_latent={"samples": torch.tensor(float(index))},
+            images=segment_images * (index + 1), audio=segment_audio,
+            iteration_index=index, continue_audio_latent=True,
+        )
+    assert loop_state["next_iteration"] == 3
+    assert merged_loop_images.shape[0] == 60 + 2 * (60 - 39)
+    assert merged_loop_audio["waveform"].shape[-1] > 0
+    final_loop = finite.MiniMaxH3FiniteLoopOutput.execute(loop_state)
+    assert final_loop[1].shape[0] == merged_loop_images.shape[0]
+    assert "Native ComfyUI Loop completed 3" in final_loop[3]
     print("finite planning/sampling smoke test: PASS")
 
 

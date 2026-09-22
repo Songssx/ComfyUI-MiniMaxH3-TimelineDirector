@@ -105,9 +105,35 @@ An editable reference-media timeline for ComfyUI's native **MiniMax H3 Reference
 | **MiniMax H3 Material Planner** | Edits media and outputs a compact H3 plan plus an ordered Omni media bundle. |
 | **MiniMax H3 Omni Media-Bundle Prompt Bridge** | Sends the bundle to an installed Prompt Rewriter Omni backend and returns only `rewritten_prompt`. |
 | **MiniMax H3 Finite Segment Sampling** | Expands an acyclic graph for direct-latent continuation, masking, sampling, deduplication, and assembly. |
+| **MiniMax H3 native-loop node set** | Splits segment selection, continuation preparation, sampling, and assembly for free composition inside ComfyUI `Start Loop / End Loop`. |
+| **MiniMax H3 Preset Export** | Connects to Material Plan or Segment Plan and saves configuration-only or complete media-bearing preset folders. |
+| **MiniMax H3 Local Preset Loader** | Finds local presets and feeds the Material Planner's new Import Preset input. |
 | **MiniMax H3 Timeline Director (Compatibility)** | Preserves the original all-in-one workflow and older saved workflows. |
 
-Long-video generation needs only **Material Planner Segment Plan → Finite Segment Sampling**. The Plan Encoder remains registered as a hidden internal node for expanded execution graphs and old workflow compatibility.
+Long-video generation needs only **Material Planner Segment Plan → Finite Segment Sampling**. The Plan Encoder is also public now so native Loop workflows can place it explicitly inside the loop body.
+
+### Local presets
+
+Preset Export supports `configuration` (timeline and creative settings only) and `complete` (also copies
+referenced video, image, and audio files). It creates an ordinary folder under
+`ComfyUI/output/MiniMaxH3_Presets/`; no ZIP is required. Copy that folder to the same location on another
+installation, refresh Local Preset Loader, and connect it to Material Planner's **Import Preset** input. The
+first run writes all media, segment timings, and per-segment assignments back into the planner UI. The loader
+can then be disconnected without losing the imported state. **Import preset** remains available for loading it
+into the UI immediately before a run.
+
+Presets intentionally omit workflows, model/LoRA selections, plugin versions, and ComfyUI versions. A complete
+preset materializes media into the fixed `ComfyUI/input/minimax_h3_timeline_director/presets/` subtree while
+leaving the shared preset folder unchanged.
+
+### Native ComfyUI Loop workflow
+
+The split nodes can drive ComfyUI's native generic loop. Connect **Initialize Segment Loop** state to
+`Start Loop.initial_iteration_value` and its count to `num_iterations`. Inside the loop, use
+`iteration_index → Select Loop Segment → Plan Encoder → Prepare Loop Segment`, then place either a
+normal sampler or the bundled H3 two-stage sampler and decode the result. Feed **Accumulate Loop Segment**
+state to both `End Loop.next_iteration_value` and `output_value`; connect `End Loop.outputs` to
+**Finish Segment Loop**. The legacy one-node Finite Segment Sampling path remains available for saved workflows.
 
 The split architecture avoids a ComfyUI dependency cycle:
 
@@ -142,7 +168,7 @@ No extra pip dependency is declared. The plugin uses PyAV, Pillow, NumPy, PyTorc
 
 ## Example workflows
 
-Only the following two examples are shipped. The first is the normal generation entry point; the second adds Omni prompt expansion.
+The plugin ships three example workflows. The first is the normal generation entry point, the second adds Omni prompt expansion, and the third demonstrates finite-segment generation with ComfyUI's native Loop nodes.
 
 ### 1. All-in-One Full Timeline Director (recommended)
 
@@ -170,6 +196,12 @@ Connect the Material Planner's **Segment Plan** directly to **MiniMax H3 Finite 
 This variant adds the **MiniMax H3 Omni Media-Bundle Prompt Bridge**, allowing Prompt Rewriter Omni to inspect ordered images, videos, and audio before expanding an H3 prompt. Use it when multimodal material understanding should precede H3 generation.
 
 > This workflow requires [MiniMax-H3-Prompt-Rewriter-ComfyUI](https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI). Follow that project for model, quantization, and VRAM requirements.
+
+### 3. Native Loop finite-segment example
+
+[Download workflow](example_workflows/MiniMaxH3原生Loop有限分段示例工作流.json)
+
+This workflow combines the split segment nodes with ComfyUI's native `Start Loop / End Loop`, making it easy to insert custom processing inside the loop body. It is shipped as a read-only example and retains the user's original configuration.
 
 ## Basic usage
 

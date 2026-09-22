@@ -13,6 +13,7 @@ import folder_paths
 from comfy.nested_tensor import NestedTensor
 from comfy_api.latest import io
 from comfy_execution.graph_utils import GraphBuilder
+from comfy_extras.nodes_audio import AudioConcat
 
 from .experimental_latent_guide import (
     _apply_linear_temporal_noise_mask,
@@ -22,6 +23,7 @@ from .drift_control_av import (
     drift_control_step_count,
     install_drift_control_av_model,
 )
+from .selflift_runtime.h3_upscaler import checkpoint_is_h3_compatible
 from .minimax_h3_timeline_director import (
     TimelinePlan,
     _require_timeline_plan,
@@ -35,6 +37,7 @@ from .minimax_h3_timeline_director import (
 
 H3_FPS = 24
 FiniteSegmentPlan = io.Custom("MINIMAX_H3_FINITE_SEGMENT_PLAN")
+FiniteLoopState = io.Custom("MINIMAX_H3_FINITE_LOOP_STATE")
 
 
 def _selflift_settings(
@@ -65,10 +68,21 @@ def _selflift_settings(
             "Two-stage sampling requires a latent upscaler under "
             "ComfyUI/models/latent_upscale_models"
         )
-    selected = str(requested_model or "").strip() or models[0]
+    compatible_models = [name for name in models if checkpoint_is_h3_compatible(name)]
+    if not compatible_models:
+        raise ValueError(
+            "Two-stage MiniMax H3 sampling found no compatible H3 latent upscaler under "
+            "ComfyUI/models/latent_upscale_models. LTX upscalers are not compatible."
+        )
+    selected = str(requested_model or "").strip() or compatible_models[0]
     if selected not in models:
         raise ValueError(
             f"The selected two-stage latent upscaler is unavailable: {selected}"
+        )
+    if not checkpoint_is_h3_compatible(selected):
+        raise ValueError(
+            f"The selected latent upscaler is not compatible with MiniMax H3: {selected}. "
+            f"Select {compatible_models[0]}; LTX upscalers use a different architecture."
         )
     return {
         "transition_step": transition, "lowres_scale": 0.5,
@@ -893,6 +907,337 @@ class MiniMaxH3FiniteOutputTrim(io.ComfyNode):
                 trimmed_audio = dict(audio)
                 trimmed_audio["waveform"] = waveform[..., :output_samples].clone()
         return io.NodeOutput(trimmed_images, trimmed_audio)
+
+
+class MiniMaxH3FiniteLoopInitialize(io.ComfyNode):
+    """Create the carried value used by ComfyUI's native Start/End Loop nodes."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteLoopInitialize",
+            display_name="MiniMax H3 Initialize Segment Loop",
+            category="MiniMax H3/Long Video/Loop",
+            description=(
+                "Initialize native ComfyUI Loop state for a finite H3 segment plan. Connect this to "
+                "Start Loop's initial_iteration_value."
+            ),
+            inputs=[FiniteSegmentPlan.Input("finite_plan", display_name="Finite Segment Plan")],
+            outputs=[
+                FiniteLoopState.Output(display_name="Initial Loop State"),
+                io.Int.Output(display_name="Segment Count"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, finite_plan):
+        finite = _require_finite_plan(finite_plan)
+        state = {
+            "finite_plan": finite,
+            "next_iteration": 0,
+            "previous_latent": None,
+            "previous_images": None,
+            "merged_images": None,
+            "merged_audio": None,
+        }
+        return io.NodeOutput(state, int(finite["segment_count"]))
+
+
+class MiniMaxH3FiniteLoopSegment(io.ComfyNode):
+    """Select one material plan and prompt from a native Loop iteration index."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteLoopSegment",
+            display_name="MiniMax H3 Select Loop Segment",
+            category="MiniMax H3/Long Video/Loop",
+            description=(
+                "Resolve the current per-segment material plan, prompt, and overlap. Connect a native "
+                "Start Loop iteration_index, then feed the plan and prompt to MiniMax H3 Plan Encoder."
+            ),
+            inputs=[
+                FiniteSegmentPlan.Input("finite_plan", display_name="Finite Segment Plan"),
+                io.Int.Input("iteration_index", force_input=True),
+            ],
+            outputs=[
+                TimelinePlan.Output(display_name="Segment Material Plan"),
+                io.String.Output(display_name="Segment Prompt"),
+                io.Int.Output(display_name="Overlap Frames"),
+                io.Boolean.Output(display_name="Use Two-Stage Sampling"),
+                io.String.Output(display_name="Two-Stage Model"),
+                io.Int.Output(display_name="High-Resolution Steps"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, finite_plan, iteration_index):
+        finite = _require_finite_plan(finite_plan)
+        index = int(iteration_index)
+        if index < 0 or index >= int(finite["segment_count"]):
+            raise ValueError(
+                f"Loop iteration {index} is outside the {finite['segment_count']}-segment plan"
+            )
+        overlap = int(finite.get("segment_overlaps", [finite["overlap_frames"]] * finite["segment_count"])[index])
+        return io.NodeOutput(
+            _finite_plan_for_segment(finite, index + 1),
+            finite["prompts"][index],
+            overlap,
+            bool(finite.get("second_pass")),
+            str(finite.get("second_pass_model") or ""),
+            int(finite.get("second_pass_high_steps") or 1),
+        )
+
+
+class MiniMaxH3FiniteLoopPrepare(io.ComfyNode):
+    """Apply previous-segment continuation and fixed-audio policy before sampling."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteLoopPrepare",
+            display_name="MiniMax H3 Prepare Loop Segment",
+            category="MiniMax H3/Long Video/Loop",
+            description=(
+                "Prepare one encoded H3 segment for sampling. It carries the preceding latent tail, applies "
+                "Drift-Control, and locks original or muted video audio when requested by the material plan."
+            ),
+            enable_expand=True,
+            inputs=[
+                FiniteSegmentPlan.Input("finite_plan", display_name="Finite Segment Plan"),
+                FiniteLoopState.Input("loop_state", display_name="Current Loop State"),
+                TimelinePlan.Input("segment_plan", display_name="Segment Material Plan"),
+                io.Conditioning.Input("positive"),
+                io.Latent.Input("target_latent"),
+                io.Model.Input("model"),
+                io.Sigmas.Input("sigmas"),
+                io.Vae.Input("vae"),
+                io.Vae.Input("audio_vae"),
+                io.Int.Input("iteration_index", force_input=True),
+                io.Boolean.Input("continue_audio_latent", display_name="Continue Audio Latent", default=True),
+            ],
+            outputs=[
+                io.Conditioning.Output(display_name="Positive"),
+                io.Latent.Output(display_name="Sampling Latent"),
+                io.Model.Output(display_name="Sampling Model"),
+                io.Int.Output(display_name="Actual Overlap Frames"),
+            ],
+        )
+
+    @classmethod
+    def execute(
+        cls, finite_plan, loop_state, segment_plan, positive, target_latent,
+        model, sigmas, vae, audio_vae, iteration_index, continue_audio_latent,
+    ):
+        finite = _require_finite_plan(finite_plan)
+        index = int(iteration_index)
+        if not isinstance(loop_state, dict) or int(loop_state.get("next_iteration", -1)) != index:
+            raise ValueError("The native Loop carried state does not match the current segment iteration")
+        expected_plan = _finite_plan_for_segment(finite, index + 1)
+        if int(segment_plan.get("length") or 0) != int(expected_plan.get("length") or 0):
+            raise ValueError("The selected segment plan does not match this Loop iteration")
+
+        overlap = int(finite.get("segment_overlaps", [finite["overlap_frames"]] * finite["segment_count"])[index])
+        locked_audio = _finite_locked_audio_asset(finite)
+        muted_video_audio = _finite_video_audio_muted(finite)
+        fixed_audio = locked_audio is not None or muted_video_audio
+        graph = GraphBuilder()
+        continuation_inputs = {
+            "positive": positive,
+            "target_latent": target_latent,
+            "iteration": index,
+            "overlap_frames": overlap,
+            "continue_audio_latent": bool(continue_audio_latent) and not fixed_audio,
+            "model": model,
+            "sigmas": sigmas,
+        }
+        previous_latent = loop_state.get("previous_latent")
+        if previous_latent is not None and overlap > 0:
+            continuation_inputs["previous_latent"] = previous_latent
+            if overlap == 1:
+                continuation_inputs.update(
+                    previous_images=loop_state.get("previous_images"),
+                    vae=vae,
+                    audio_vae=audio_vae,
+                )
+        continuation = graph.node(
+            "MiniMaxH3FiniteLatentContinuation",
+            id="loop_segment_continuation",
+            **continuation_inputs,
+        )
+        sampling_latent = continuation.out(1)
+        if fixed_audio:
+            source_audio = graph.node(
+                "MiniMaxH3LockedAudioSlice" if locked_audio is not None else "MiniMaxH3SilentAudioSlice",
+                id="loop_segment_audio",
+                plan=segment_plan,
+            )
+            encoded_audio = graph.node(
+                "VAEEncodeAudio",
+                id="loop_segment_audio_encode",
+                audio=source_audio.out(0),
+                vae=audio_vae,
+            )
+            sampling_latent = graph.node(
+                "MiniMaxH3LockAudioLatent",
+                id="loop_segment_audio_lock",
+                target_latent=sampling_latent,
+                audio_latent=encoded_audio.out(0),
+            ).out(0)
+        return io.NodeOutput(
+            continuation.out(0), sampling_latent, continuation.out(3), continuation.out(2),
+            expand=graph.finalize(),
+        )
+
+
+class MiniMaxH3FiniteLoopAccumulate(io.ComfyNode):
+    """Store the sampled tail and merge one decoded segment into carried Loop state."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteLoopAccumulate",
+            display_name="MiniMax H3 Accumulate Loop Segment",
+            category="MiniMax H3/Long Video/Loop",
+            description=(
+                "Remove the duplicated opening overlap, append decoded frames and audio, and return the state "
+                "that must connect to End Loop's next_iteration_value."
+            ),
+            inputs=[
+                FiniteSegmentPlan.Input("finite_plan", display_name="Finite Segment Plan"),
+                FiniteLoopState.Input("loop_state", display_name="Current Loop State"),
+                io.Latent.Input("sampled_latent"),
+                io.Image.Input("images"),
+                io.Audio.Input("audio"),
+                io.Int.Input("iteration_index", force_input=True),
+                io.Boolean.Input("continue_audio_latent", display_name="Continue Audio Latent", default=True),
+            ],
+            outputs=[
+                FiniteLoopState.Output(display_name="Next Loop State"),
+                io.Image.Output(display_name="Merged Frames"),
+                io.Audio.Output(display_name="Merged Audio"),
+            ],
+        )
+
+    @classmethod
+    def execute(
+        cls, finite_plan, loop_state, sampled_latent, images, audio,
+        iteration_index, continue_audio_latent,
+    ):
+        finite = _require_finite_plan(finite_plan)
+        index = int(iteration_index)
+        if not isinstance(loop_state, dict) or int(loop_state.get("next_iteration", -1)) != index:
+            raise ValueError("The native Loop carried state does not match the current segment iteration")
+        overlap = int(finite.get("segment_overlaps", [finite["overlap_frames"]] * finite["segment_count"])[index])
+        trim_frames = 0 if index <= 0 or overlap == 0 else _valid_guide_frames(overlap)
+        if images.shape[0] <= trim_frames:
+            raise ValueError(f"This segment has only {images.shape[0]} frames; cannot remove a {trim_frames}-frame overlap")
+        current_images = images[trim_frames:].clone() if trim_frames else images
+        merged_images = loop_state.get("merged_images")
+        if merged_images is not None:
+            merged_images = torch.cat((merged_images, current_images), dim=0)
+        else:
+            merged_images = current_images
+
+        locked_audio = _finite_locked_audio_asset(finite)
+        muted_video_audio = _finite_video_audio_muted(finite)
+        soft_audio = bool(continue_audio_latent) and locked_audio is None and not muted_video_audio
+        current_audio = audio
+        if not soft_audio and trim_frames:
+            waveform = audio.get("waveform")
+            sample_rate = int(audio.get("sample_rate", 0))
+            if waveform is None or sample_rate <= 0:
+                raise ValueError("audio must contain waveform and a valid sample_rate")
+            trim_samples = round((trim_frames / H3_FPS) * sample_rate)
+            if waveform.shape[-1] <= trim_samples:
+                raise ValueError("This segment's audio is too short to remove the overlap")
+            current_audio = dict(audio)
+            current_audio["waveform"] = waveform[..., trim_samples:].clone()
+
+        merged_audio = loop_state.get("merged_audio")
+        if merged_audio is not None:
+            if soft_audio and overlap > 0:
+                merged_audio = MiniMaxH3FiniteAudioTrimTail.execute(
+                    merged_audio, overlap,
+                ).result[0]
+            merged_audio = AudioConcat.execute(
+                audio1=merged_audio, audio2=current_audio, direction="after",
+            ).result[0]
+        else:
+            merged_audio = current_audio
+
+        state = {
+            "finite_plan": finite,
+            "next_iteration": index + 1,
+            "previous_latent": sampled_latent,
+            "previous_images": images,
+            "merged_images": merged_images,
+            "merged_audio": merged_audio,
+        }
+        return io.NodeOutput(state, merged_images, merged_audio)
+
+
+class MiniMaxH3FiniteLoopOutput(io.ComfyNode):
+    """Resolve the final carried state after native End Loop completes."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FiniteLoopOutput",
+            display_name="MiniMax H3 Finish Segment Loop",
+            category="MiniMax H3/Long Video/Loop",
+            description=(
+                "Convert End Loop's final carried state into the last latent and merged video/audio, including "
+                "duration trimming and exact locked or muted soundtrack replacement."
+            ),
+            inputs=[FiniteLoopState.Input("loop_state", display_name="Final Loop State")],
+            outputs=[
+                io.Latent.Output(display_name="Last Sampled Latent"),
+                io.Image.Output(display_name="Merged Frames"),
+                io.Audio.Output(display_name="Merged Audio"),
+                io.String.Output(display_name="Loop Status"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, loop_state):
+        if not isinstance(loop_state, dict):
+            raise ValueError("loop_state must come from MiniMax H3 Accumulate Loop Segment")
+        finite = _require_finite_plan(loop_state.get("finite_plan"))
+        completed = int(loop_state.get("next_iteration", 0))
+        if completed != int(finite["segment_count"]):
+            raise ValueError(
+                f"The native Loop completed {completed} of {finite['segment_count']} segments"
+            )
+        images = loop_state.get("merged_images")
+        audio = loop_state.get("merged_audio")
+        last_latent = loop_state.get("previous_latent")
+        if images is None or audio is None or last_latent is None:
+            raise ValueError("The native Loop did not produce a complete sampled segment state")
+
+        target_output_frames = int(finite.get("target_output_frames") or 0)
+        if target_output_frames > 0:
+            images, audio = MiniMaxH3FiniteOutputTrim.execute(
+                images, audio, target_output_frames,
+            ).result
+        locked_audio = _finite_locked_audio_asset(finite)
+        if locked_audio is not None:
+            first = _finite_plan_for_segment(finite, 1)
+            master_plan = copy.deepcopy(first)
+            if locked_audio.get("lockKind") != "timeline_video_audio":
+                master_plan["timeline"]["audios"] = [locked_audio]
+            output_frames = target_output_frames or int(images.shape[0])
+            audio = _locked_audio_interval(master_plan, output_frames=output_frames)
+        elif _finite_video_audio_muted(finite):
+            audio = _silent_audio_interval(
+                _finite_plan_for_segment(finite, 1),
+                output_frames=target_output_frames or int(images.shape[0]),
+            )
+        status = (
+            f"Native ComfyUI Loop completed {completed} H3 segments; "
+            f"merged output contains {int(images.shape[0])} frames."
+        )
+        return io.NodeOutput(last_latent, images, audio, status)
 
 
 class MiniMaxH3FiniteSegmentSampler(io.ComfyNode):

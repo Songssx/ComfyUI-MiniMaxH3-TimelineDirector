@@ -255,6 +255,46 @@ class LatentResizer3D(nn.Module):
 _model_cache = {}
 
 
+def _model_path(model_name):
+    for folder in folder_paths.get_folder_paths(_FOLDER):
+        candidate = os.path.join(folder, model_name)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _canonical_weight_key(name):
+    key = str(name)
+    prefixes = ("state_dict.", "module.", "model.", "upscaler.")
+    changed = True
+    while changed:
+        changed = False
+        for prefix in prefixes:
+            if key.startswith(prefix):
+                key = key[len(prefix):]
+                changed = True
+                break
+    return key
+
+
+def checkpoint_is_h3_compatible(model_name):
+    """Cheaply reject unrelated safetensors without loading their tensors."""
+
+    path = _model_path(model_name)
+    if path is None:
+        return False
+    if os.path.splitext(path)[1].lower() != ".safetensors":
+        # PyTorch checkpoints have no cheap header-only key reader. Let the
+        # regular loader validate these less common files.
+        return "h3" in str(model_name).lower() or "minimax" in str(model_name).lower()
+    try:
+        from safetensors import safe_open
+        with safe_open(path, framework="pt", device="cpu") as checkpoint:
+            return any(_canonical_weight_key(key) == "conv_in.weight" for key in checkpoint.keys())
+    except Exception:
+        return False
+
+
 def list_upscaler_models():
     try:
         paths = folder_paths.get_folder_paths(_FOLDER)
@@ -266,7 +306,10 @@ def list_upscaler_models():
             for f in files:
                 if os.path.splitext(f)[1].lower() in (".pth", ".safetensors"):
                     names.append(os.path.relpath(os.path.join(root, f), p))
-    return sorted(names)
+    # Keep every file visible, matching ComfyUI's model-directory behavior,
+    # while putting checkpoints that implement the H3 3D latent-lifter
+    # architecture first so an empty/new planner never defaults to an LTX model.
+    return sorted(set(names), key=lambda name: (not checkpoint_is_h3_compatible(name), name.lower()))
 
 
 def _detect_arch(sd):
@@ -300,10 +343,22 @@ def _detect_arch(sd):
     return cfg
 
 
-def _normalize_checkpoint_dtype(state_dict):
+def _normalize_checkpoint_keys(state_dict):
+    if not isinstance(state_dict, dict):
+        raise ValueError("SelfLift: latent upscaler checkpoint is not a state dictionary")
+    normalized = {_canonical_weight_key(name): value for name, value in state_dict.items()}
+    return normalized
+
+
+def _normalize_checkpoint_dtype(state_dict, model_name=""):
     weight = state_dict.get("conv_in.weight")
     if weight is None:
-        raise ValueError("SelfLift: upscaler checkpoint is missing conv_in.weight")
+        label = f" '{model_name}'" if model_name else ""
+        raise ValueError(
+            f"SelfLift: selected latent upscaler{label} is not compatible with MiniMax H3 "
+            "(missing conv_in.weight). Select minimax_h3_latent_upscaler_3d_bf16.safetensors; "
+            "LTX spatial/temporal upscalers cannot be used for H3 two-stage sampling."
+        )
     dtype = weight.dtype
     if str(dtype).startswith("torch.float8_"):
         dtype = torch.bfloat16 if any(value.dtype == torch.bfloat16 for value in state_dict.values()) else torch.float16
@@ -320,12 +375,7 @@ def _load_model(model_name, device):
     if key in _model_cache:
         return _model_cache[key]
 
-    path = None
-    for p in folder_paths.get_folder_paths(_FOLDER):
-        candidate = os.path.join(p, model_name)
-        if os.path.isfile(candidate):
-            path = candidate
-            break
+    path = _model_path(model_name)
     if path is None:
         raise FileNotFoundError(f"latent upscaler model not found: {model_name} (place it under ComfyUI/models/{_FOLDER}/)")
 
@@ -333,9 +383,8 @@ def _load_model(model_name, device):
     sd = comfy.utils.load_torch_file(path)
     if isinstance(sd, dict) and 'model' in sd:
         sd = sd['model']
-    if any(k.startswith("upscaler.") for k in sd):
-        sd = {k[len("upscaler."):]: v for k, v in sd.items() if k.startswith("upscaler.")}
-    sd = _normalize_checkpoint_dtype(sd)
+    sd = _normalize_checkpoint_keys(sd)
+    sd = _normalize_checkpoint_dtype(sd, model_name)
 
     cfg = _detect_arch(sd)
     with torch.device("meta"):

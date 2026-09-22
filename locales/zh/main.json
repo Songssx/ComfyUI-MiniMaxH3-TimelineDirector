@@ -7,7 +7,7 @@
       "segmentTimelineHelp":"自动吸附 H3 帧数 · 拖动/缩放会联动后续框 · 段间不留空隙",
       "segmentTabs":"分段时间与提示词", "segmentPlanHint":"将「分段规划」直接连接「有限分段采样」，无需有限分段展开节点",
       "brandPlanner": "MiniMax H3 素材规划台", "brandDirector": "MiniMax H3 时间线导演台（兼容）",
-      "addVideo": "＋ 视频", "addImage": "＋ 图片", "addAudio": "＋ 音频", "splitAtPlayhead": "✂ 在播放头分段", "deleteClip": "删除片段", "ready": "就绪",
+      "addVideo": "＋ 视频", "addImage": "＋ 图片", "addAudio": "＋ 音频", "importPreset":"导入预设", "presetNotConnected":"请先把本地预设加载器连接到“导入预设”输入", "presetLoaded":"已载入预设：{name}", "presetLoadFailed":"预设载入失败：{error}", "refreshPresets":"刷新本地预设", "splitAtPlayhead": "✂ 在播放头分段", "deleteClip": "删除片段", "ready": "就绪",
       "selectionStart": "选区起点", "referenceDuration": "参考时长", "zoom": "缩放", "fitAll": "适应全部", "matchNearestGap": "匹配最近空隙", "materialSegments": "素材分段", "updateSegments": "更新分段", "secondPass": "开启二采", "secondPassModel": "二采模型", "secondPassHighSteps": "高清采样步数", "secondPassModelMissing": "未找到 Latent 放大模型", "secondPassOn": "已为每个分段开启二采", "secondPassOff": "二采已关闭", "secondPassModelChanged": "二采模型：{model}", "secondPassHighStepsChanged": "高清采样步数：{steps}",
       "timelineHelp": "拖动片段/播放头 · 边缘自动吸附 · 选区时长=生成时长", "referenceVideo": "参考视频", "videoAudio": "视频原声", "off": "关闭", "on": "开启", "noClipSelected": "未选中片段",
       "previewEmpty": "拖动红色播放头到视频片段上，即可查看当前位置画面", "previewTitle": "低清视频监看 · 最高 480×270 / 12fps", "noPreviewVideo": "当前没有可预览的视频", "playPreview": "▶ 播放预览", "pausePreview": "❚❚ 暂停预览",

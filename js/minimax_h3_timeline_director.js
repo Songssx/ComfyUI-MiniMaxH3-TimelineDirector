@@ -10,6 +10,8 @@ const DIRECTOR_HEIGHT = 674;
 const MAX_SEGMENT_IMAGES = 9;
 const MAX_SEGMENT_AUDIOS = 3;
 let selfLiftUpscalerModels = [];
+const preferredH3Upscaler = () => selfLiftUpscalerModels.find(name => /(?:minimax|h3)/i.test(name)) || selfLiftUpscalerModels[0] || "";
+const shouldRepairUpscalerSelection = name => !selfLiftUpscalerModels.includes(name) || (!/(?:minimax|h3)/i.test(name) && /(?:minimax|h3)/i.test(preferredH3Upscaler()));
 
 const TIMELINE_EN = {
   globalPrompt: "Global prompt", globalPromptHint: "Used for the current GEN region and reused by every segment when all segment prompts are empty.",
@@ -19,7 +21,9 @@ const TIMELINE_EN = {
   segmentTimelineHelp: "H3 frame snapping · Moving/resizing ripples later windows · No gaps",
   segmentTabs: "Segment windows and prompts", segmentPlanHint: "Connect Segment Plan directly to Finite Segment Sampler",
   brandPlanner: "MiniMax H3 Material Planner", brandDirector: "MiniMax H3 Timeline Director (Compatibility)",
-  addVideo: "＋ Video", addImage: "＋ Image", addAudio: "＋ Audio", splitAtPlayhead: "✂ Split at Playhead", deleteClip: "Delete Clip", ready: "Ready",
+  addVideo: "＋ Video", addImage: "＋ Image", addAudio: "＋ Audio", importPreset: "Import preset", splitAtPlayhead: "✂ Split at Playhead", deleteClip: "Delete Clip", ready: "Ready",
+  presetNotConnected: "Connect a Local Preset Loader to Import Preset first", presetLoaded: "Loaded preset: {name}", presetLoadFailed: "Preset load failed: {error}",
+  refreshPresets: "Refresh local presets",
   selectionStart: "Selection start", referenceDuration: "Reference duration", zoom: "Zoom", fitAll: "Fit all", matchNearestGap: "Match nearest gap",
   materialSegments: "Material segments", updateSegments: "Update segments", secondPass: "Two-stage sampling", secondPassModel: "Upscaler", secondPassHighSteps: "High-res steps", secondPassModelMissing: "No latent upscaler found", secondPassOn: "Two-stage sampling enabled for every segment", secondPassOff: "Two-stage sampling disabled", secondPassModelChanged: "Two-stage upscaler: {model}", secondPassHighStepsChanged: "High-res sampling steps: {steps}", timelineHelp: "Drag clips/playhead · Edge snapping · Selection duration = generation duration",
   referenceVideo: "Reference video", videoAudio: "Video audio", off: "Off", on: "On", noClipSelected: "No clip selected",
@@ -402,7 +406,9 @@ class TimelineDirectorUI {
     this.previewClipId = null;
     this.segmentCountDraft = this.state.segmentConfig.count;
     this.activeSegment=this.state.segmentConfig.activeIndex||0;
+    this.upscalerSelectionRepaired=false;
     this.build();
+    if(this.upscalerSelectionRepaired)this.sync(false);
     this.contentResizeObserver = new ResizeObserver(() => this.scheduleNodeHeightSync());
     this.contentResizeObserver.observe(this.root);
     this.bindGenerationWidget();
@@ -552,8 +558,9 @@ class TimelineDirectorUI {
   }
 
   build() {
-    if(this.isPlanner && !selfLiftUpscalerModels.includes(this.state.secondPassModel)){
-      this.state.secondPassModel=selfLiftUpscalerModels[0]||"";
+    if(this.isPlanner && shouldRepairUpscalerSelection(this.state.secondPassModel)){
+      this.state.secondPassModel=preferredH3Upscaler();
+      this.upscalerSelectionRepaired=true;
     }
     const upscalerOptions=selfLiftUpscalerModels.length
       ? selfLiftUpscalerModels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("")
@@ -565,6 +572,7 @@ class TimelineDirectorUI {
         <button class="m3td-btn" data-action="video">${esc(tr("addVideo"))}</button>
         <button class="m3td-btn" data-action="image">${esc(tr("addImage"))}</button>
         <button class="m3td-btn" data-action="audio">${esc(tr("addAudio"))}</button>
+        ${this.isPlanner?`<button class="m3td-btn" data-action="importPreset">${esc(tr("importPreset"))}</button>`:""}
         <button class="m3td-btn" data-action="split">${esc(tr("splitAtPlayhead"))}</button>
         <button class="m3td-btn danger" data-action="delete">${esc(tr("deleteClip"))}</button>
         <span class="m3td-spacer"></span><span class="m3td-status">${esc(tr("ready"))}</span>
@@ -632,6 +640,8 @@ class TimelineDirectorUI {
     this.root.querySelector('[data-action="video"]').onclick = () => this.root.querySelector('[data-upload="video"]').click();
     this.root.querySelector('[data-action="image"]').onclick = () => this.root.querySelector('[data-upload="image"]').click();
     this.root.querySelector('[data-action="audio"]').onclick = () => this.root.querySelector('[data-upload="audio"]').click();
+    const importPresetButton=this.root.querySelector('[data-action="importPreset"]');
+    if(importPresetButton)importPresetButton.onclick=()=>this.importConnectedPreset();
     this.root.querySelector('[data-action="split"]').onclick = () => this.splitSelected();
     this.root.querySelector('[data-action="delete"]').onclick = () => this.deleteSelected();
     this.root.querySelector('[data-action="fit"]').onclick = () => this.fitTimeline();
@@ -1503,6 +1513,64 @@ class TimelineDirectorUI {
 
   setStatus(message, progress=null) { this.status.textContent=message; if(progress!=null)this.progress.style.width=`${clamp(progress,0,1)*100}%`; }
 
+  connectedPresetName() {
+    const input=this.node.inputs?.find(item=>item.name==="import_preset");
+    if(input?.link==null)return "";
+    const links=this.node.graph?.links;
+    const link=links?.get?.(input.link) ?? links?.[input.link];
+    const originId=link?.origin_id ?? link?.originId;
+    const origin=this.node.graph?.getNodeById?.(originId);
+    if(origin?.type!=="MiniMaxH3PresetLoader")return "";
+    return String(origin.widgets?.find(widget=>widget.name==="preset_name")?.value||"");
+  }
+
+  async importConnectedPreset() {
+    const presetName=this.connectedPresetName();
+    if(!presetName||presetName==="(no presets found)"){
+      this.setStatus(tr("presetNotConnected"));
+      return;
+    }
+    try{
+      const response=await api.fetchApi("/minimax_h3_timeline/presets/load",{
+        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({preset_name:presetName}),
+      });
+      const payload=await response.json();
+      if(!response.ok)throw new Error(payload?.error||`HTTP ${response.status}`);
+      this.applyPresetPayload(payload);
+    }catch(error){
+      console.error("[MiniMaxH3TimelineDirector] Preset import failed",error);
+      this.setStatus(tr("presetLoadFailed",{error:error.message}));
+    }
+  }
+
+  applyPresetPayload(payload) {
+    if(!payload?.timeline||typeof payload.timeline!=="object")throw new Error("Preset timeline is missing");
+    this.state=normalizeState(payload.timeline);
+    if(this.isPlanner&&shouldRepairUpscalerSelection(this.state.secondPassModel)){
+      this.state.secondPassModel=preferredH3Upscaler();
+    }
+    // Reset all selection-dependent UI state before widget callbacks run. A
+    // previous four-segment preset can leave activeSegment=3; importing a
+    // one-segment preset must not let generation_seconds edit that stale slot.
+    this.activeSegment=this.state.segmentConfig.activeIndex||0;
+    this.segmentCountDraft=this.state.segmentConfig.count;
+    this.selectedId=null;
+    this.playhead=this.state.selection.start;
+    this.previewClipId=null;
+    for(const [name,value] of [["width",payload.width],["height",payload.height],["generation_seconds",payload.generation_seconds]]){
+      const widget=this.node.widgets?.find(item=>item.name===name);
+      if(!widget||value==null)continue;
+      widget.value=value;
+      if(name==="generation_seconds"){
+        this._syncingGeneration=true;
+        try{widget.callback?.(value);}finally{this._syncingGeneration=false;}
+      }else widget.callback?.(value);
+    }
+    this.sync(false);
+    this.render();
+    this.setStatus(tr("presetLoaded",{name:payload.name||"preset"}));
+  }
+
   async addFile(kind,file) {
     if(this.uploading)return;
     this.uploading=true;
@@ -1551,7 +1619,14 @@ class TimelineDirectorUI {
     finally{this.uploading=false;setTimeout(()=>{this.progress.style.width="0";},800);}
   }
 
-  reload() { this.previewVideo?.pause();this.state=normalizeState(this.readWidget());this.activeSegment=this.state.segmentConfig.activeIndex||0;this.segmentCountDraft=this.state.segmentConfig.count;this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();this.render(); }
+  reload() {
+    this.previewVideo?.pause();this.state=normalizeState(this.readWidget());
+    const repaired=this.isPlanner&&shouldRepairUpscalerSelection(this.state.secondPassModel);
+    if(repaired)this.state.secondPassModel=preferredH3Upscaler();
+    this.activeSegment=this.state.segmentConfig.activeIndex||0;this.segmentCountDraft=this.state.segmentConfig.count;this.selectedId=null;this.playhead=this.state.selection.start;this.previewClipId=null;this.bindGenerationWidget();this.syncGenerationWidget();
+    if(repaired)this.sync(false);
+    this.render();
+  }
   destroy() {
     cancelAnimationFrame(this.previewRAF);cancelAnimationFrame(this.dragRAF);cancelAnimationFrame(this.layoutRAF);this.contentResizeObserver?.disconnect();this.previewVideo?.pause();window.removeEventListener("pointermove",this.pointerMove,true);window.removeEventListener("pointerup",this.pointerUp,true);window.removeEventListener("pointercancel",this.pointerUp,true);
     this.stage?.removeEventListener("pointerdown",this.timelinePointerDown,true);
@@ -1565,6 +1640,21 @@ class TimelineDirectorUI {
   }
 }
 
+api.addEventListener("minimax_h3_timeline_preset_applied",event=>{
+  const payload=event.detail;
+  if(!payload?.node_id)return;
+  const graph=app.graph;
+  const numericId=Number(payload.node_id);
+  const node=graph?.getNodeById?.(payload.node_id) ?? (Number.isFinite(numericId)?graph?.getNodeById?.(numericId):null);
+  if(node?.type!=="MiniMaxH3TimelinePlanner"||!node.__m3td)return;
+  try{
+    node.__m3td.applyPresetPayload(payload);
+  }catch(error){
+    console.error("[MiniMaxH3TimelineDirector] Unable to persist executed preset",error);
+    node.__m3td.setStatus(tr("presetLoadFailed",{error:error.message}));
+  }
+});
+
 app.registerExtension({
   name: "MiniMaxH3.TimelineDirector",
   async beforeRegisterNodeDef(nodeType,nodeData) {
@@ -1573,6 +1663,32 @@ app.registerExtension({
       selfLiftUpscalerModels=Array.isArray(values)
         ? values.filter(name=>name!=="none")
         : [];
+      return;
+    }
+    if(nodeData.name==="MiniMaxH3PresetLoader"){
+      await ensureTimelineLocale();
+      const originalCreated=nodeType.prototype.onNodeCreated;
+      nodeType.prototype.onNodeCreated=function(){
+        const result=originalCreated?.apply(this,arguments);
+        const label=tr("refreshPresets");
+        const button=this.addWidget?.("button",label,null,async()=>{
+          try{
+            const response=await api.fetchApi("/minimax_h3_timeline/presets/list");
+            const payload=await response.json();
+            if(!response.ok)throw new Error(payload?.error||`HTTP ${response.status}`);
+            const combo=this.widgets?.find(widget=>widget.name==="preset_name");
+            if(!combo)return;
+            const names=Array.isArray(payload.presets)&&payload.presets.length?payload.presets:["(no presets found)"];
+            combo.options ||= {};
+            combo.options.values=names;
+            if(!names.includes(combo.value))combo.value=names[0];
+            combo.callback?.(combo.value);
+            this.setDirtyCanvas?.(true,true);
+          }catch(error){console.error("[MiniMaxH3TimelineDirector] Preset refresh failed",error);}
+        });
+        if(button)button.serialize=false;
+        return result;
+      };
       return;
     }
     if(nodeData.name==="MiniMaxH3FiniteSegmentSampler"){

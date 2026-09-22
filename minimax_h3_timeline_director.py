@@ -73,6 +73,7 @@ _MEDIA_INFO_SEMAPHORE = asyncio.Semaphore(MEDIA_INFO_CONCURRENCY)
 _PREVIEW_SEMAPHORE = asyncio.Semaphore(PREVIEW_CONCURRENCY)
 
 TimelinePlan = io.Custom("MINIMAX_H3_TIMELINE_PLAN")
+PresetData = io.Custom("MINIMAX_H3_TIMELINE_PRESET")
 PromptMediaBundle = io.Custom("MINIMAX_H3_OMNI_MEDIA_BUNDLE")
 PROMPT_REWRITER_OPTIONS = io.Custom("H3_REWRITER_OPTIONS")
 OMNI_REWRITER_DIRECTORY = "MiniMax-H3-Prompt-Rewriter-ComfyUI"
@@ -1609,6 +1610,10 @@ class MiniMaxH3TimelinePlanner(io.ComfyNode):
             ),
             category="model/conditioning/minimax",
             inputs=[
+                PresetData.Input(
+                    "import_preset", display_name="Import Preset", optional=True,
+                    tooltip="Optional local preset loaded by MiniMax H3 Local Preset Loader.",
+                ),
                 io.Int.Input(
                     "prompt_index", display_name="Prompt Index", optional=True,
                     force_input=True, tooltip=(
@@ -1629,26 +1634,58 @@ class MiniMaxH3TimelinePlanner(io.ComfyNode):
                 PromptMediaBundle.Output(display_name="Omni Media Bundle"),
                 io.Custom("MINIMAX_H3_FINITE_SEGMENT_PLAN").Output(display_name="Segment Plan"),
             ],
+            hidden=[io.Hidden.unique_id],
         )
 
     @classmethod
     def execute(
-        cls, width, height, generation_seconds, timeline_data="", prompt_index=None
+        cls, width, height, generation_seconds, timeline_data="", import_preset=None,
+        prompt_index=None, unique_id=None,
     ) -> io.NodeOutput:
+        source_timeline_data = timeline_data
+        source_width, source_height = width, height
+        source_seconds = generation_seconds
+        if import_preset is not None:
+            if not isinstance(import_preset, dict) or import_preset.get("type") != "MINIMAX_H3_TIMELINE_PRESET":
+                raise ValueError("Import Preset must come from MiniMax H3 Local Preset Loader")
+            preset_timeline = import_preset.get("timeline")
+            if not isinstance(preset_timeline, dict):
+                raise ValueError("The imported preset is missing timeline configuration")
+            source_timeline_data = json.dumps(preset_timeline, ensure_ascii=False)
+            source_width = int(import_preset.get("width") or width)
+            source_height = int(import_preset.get("height") or height)
+            source_seconds = float(import_preset.get("generation_seconds") or generation_seconds)
         complete_plan = _create_timeline_plan(
-            timeline_data, width, height, generation_seconds, None
+            source_timeline_data, source_width, source_height, source_seconds, None
         )
+        if import_preset is not None and unique_id is not None:
+            sender = getattr(PromptServer.instance, "send_sync", None)
+            if callable(sender):
+                payload = {
+                    "node_id": str(unique_id),
+                    "name": str(import_preset.get("name") or "preset"),
+                    "preset_type": str(import_preset.get("preset_type") or "configuration"),
+                    "width": int(complete_plan["width"]),
+                    "height": int(complete_plan["height"]),
+                    "generation_seconds": float(complete_plan["generation_seconds"]),
+                    "timeline": complete_plan["timeline"],
+                }
+                sender(
+                    "minimax_h3_timeline_preset_applied",
+                    payload,
+                    getattr(PromptServer.instance, "client_id", None),
+                )
         # The sampler validates prompts only when this output is actually used.
         # Existing single-segment encoder/Omni workflows remain usable while editing.
         selected_plan = complete_plan
         config = complete_plan["timeline"].get("segmentConfig", {})
         if prompt_index is not None:
             selected_plan = _create_timeline_plan(
-                timeline_data, width, height, generation_seconds, prompt_index,
+                source_timeline_data, source_width, source_height, source_seconds, prompt_index,
             )
         elif config.get("mode") == "timeline" and int(config.get("count", 0)) > 0:
             selected_plan = _create_timeline_plan(
-                timeline_data, width, height, generation_seconds,
+                source_timeline_data, source_width, source_height, source_seconds,
                 int(config.get("activeIndex", 0)) + 1,
             )
         return io.NodeOutput(
@@ -1785,7 +1822,6 @@ class MiniMaxH3TimelineEncoder(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3TimelineEncoder",
-            is_dev_only=True,
             display_name="MiniMax H3 Plan Encoder",
             description="Encode a material plan and final H3 prompt into references, native Guides, conditioning, and AV latent.",
             category="model/conditioning/minimax",

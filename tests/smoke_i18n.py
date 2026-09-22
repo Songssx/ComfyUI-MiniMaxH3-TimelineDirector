@@ -14,6 +14,10 @@ EXPECTED_NODES = {
     "MiniMaxH3FiniteSegmentExpansion", "MiniMaxH3FiniteSegmentSampler",
     "MiniMaxH3FiniteLatentContinuation", "MiniMaxH3FiniteSegmentFinalize",
     "MiniMaxH3FiniteAudioTrimTail", "MiniMaxH3FiniteOutputTrim",
+    "MiniMaxH3FiniteLoopInitialize", "MiniMaxH3FiniteLoopSegment",
+    "MiniMaxH3FiniteLoopPrepare", "MiniMaxH3FiniteLoopAccumulate",
+    "MiniMaxH3FiniteLoopOutput",
+    "MiniMaxH3PresetLoader", "MiniMaxH3PresetExporter",
 }
 
 
@@ -40,6 +44,7 @@ def main() -> None:
         "__init__.py", "minimax_h3_timeline_director.py",
         "minimax_h3_finite_segments.py", "experimental_latent_guide.py",
         "drift_control_av.py",
+        "preset_nodes.py",
         "js/minimax_h3_timeline_director.js",
     ):
         source = (ROOT / relative).read_text(encoding="utf-8")

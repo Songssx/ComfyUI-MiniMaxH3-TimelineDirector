@@ -92,10 +92,47 @@
 | **MiniMax H3 素材规划台** | 编辑素材并输出紧凑的 `素材规划` 与 `Omni素材包`。 |
 | **MiniMax H3 Omni 素材包提示词桥** | 将规划台素材送入已安装的 Prompt Rewriter Omni，并只输出 `rewritten_prompt`。 |
 | **MiniMax H3 有限分段采样** | 展开普通无环执行图，完成直接 Latent 续写、时间遮罩、采样、去重和合并。 |
+| **MiniMax H3 原生循环分段节点组** | 把分段选择、续接准备、采样和结果合并拆开，可在 ComfyUI `Start Loop / End Loop` 中自由组合一采、二采和自定义处理。 |
+| **MiniMax H3 导出预设** | 连接“素材规划”或“分段规划”，保存纯配置预设，或保存包含引用视频、图片和音频的完整预设文件夹。 |
+| **MiniMax H3 本地预设加载器** | 检索本地预设并连接到素材规划台新增的“导入预设”输入。 |
 | **MiniMax H3 时间线导演台（兼容）** | 保留原先的一体化工作流和旧工作流兼容性。 |
 
 长视频生成只需连接 **素材规划台「分段规划」→ 有限分段采样「有限分段规划」**。
-`MiniMax H3 规划编码器`仍作为内部执行节点注册，以便采样器展开执行图和兼容旧工作流，但不会在新建节点菜单中显示。
+`MiniMax H3 规划编码器`现在作为公开节点显示，可用于原生 Loop 循环体；旧的一键采样器仍会在内部复用它。
+
+### 本地预设
+
+“导出预设”提供两种保存模式：`configuration` 只保存时间线与创作配置；`complete` 还会把引用的
+视频、图片和音频复制到同一预设文件夹。结果保存在 `ComfyUI/output/MiniMaxH3_Presets/预设名/`，
+不打包 ZIP。把整个文件夹复制到另一套安装的同名目录后，刷新“本地预设加载器”即可使用；
+将其输出连接到素材规划台的“导入预设”后运行一次，完整素材、分段、时长和逐段分配会自动写回
+规划台并显示在界面中。随后可以断开预设加载器，规划台会保留已经导入的状态并允许继续修改；
+也可以在运行前点击规划台顶部“导入预设”立即预览和编辑。
+
+预设只记录可移植的素材编排、提示词、分段、音频锁定和二采开关等创作信息，不记录工作流、
+模型/LoRA 选择、插件版本或 ComfyUI 版本。完整预设在载入时会把素材安全复制到固定的
+`ComfyUI/input/minimax_h3_timeline_director/presets/` 子目录；原预设文件夹保持不变。
+
+### 使用 ComfyUI 原生 Loop
+
+新版 ComfyUI 可使用下面的拆分路径。`初始化分段循环`输出的分段数量连接 `Start Loop`
+的 `num_iterations`，初始状态连接 `initial_iteration_value`；`合并循环分段`输出的下一循环状态
+同时连接 `End Loop` 的 `next_iteration_value` 和 `output_value`，最后由 `完成分段循环`取出结果。
+
+```text
+分段规划 ──> 初始化分段循环 ──初始状态──> Start Loop
+                  └─分段数量───────────> num_iterations
+
+Start Loop.iteration_index ──> 选择循环分段 ──> 规划编码器
+Start Loop.current_iteration_value ───────────────┐
+规划编码器 + 模型 + Sigmas ──> 准备循环分段 ──> 用户自选采样/二采 ──> VAE 解码
+                                                  └─> 合并循环分段 ──下一状态─> End Loop
+
+End Loop.outputs ──> 完成分段循环 ──> 完整画面 / 音频 / 末段 Latent
+```
+
+循环体中的采样可以使用普通 `SamplerCustomAdvanced`，也可以使用插件内置的 H3 二采节点，
+还可以插入预览、保存和用户自己的处理节点。原来的 **有限分段采样** 继续保留，旧工作流无需修改。
 
 拆分节点可以避免“素材输出连接到前置提示词重写器，再返回同一编码节点”产生的循环：
 
@@ -129,7 +166,7 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 
 ## 示例工作流
 
-仓库只保留下面两个示例。第一个是日常生成入口，第二个用于需要 Omni 自动扩写提示词的场景。
+插件内置下面三个示例工作流。第一个是日常生成入口，第二个用于需要 Omni 自动扩写提示词的场景，第三个演示如何使用 ComfyUI 原生 Loop 自由搭建有限分段生成。
 
 ### 1. 全功能合一完全体导演台（推荐）
 
@@ -157,6 +194,12 @@ git clone https://github.com/Songssx/ComfyUI-MiniMaxH3-TimelineDirector.git
 在素材规划台基础上加入 **MiniMax H3 Omni 素材包提示词桥**，让 Prompt Rewriter Omni 同时读取有序图片、视频和音频，为当前任务扩写 H3 提示词。适合先由多模态模型理解素材，再进入 H3 生成的工作方式。
 
 > 使用该工作流前必须安装 [MiniMax-H3-Prompt-Rewriter-ComfyUI](https://github.com/pytraveler/MiniMax-H3-Prompt-Rewriter-ComfyUI)。模型、量化方式及显存要求请参考该项目说明。
+
+### 3. 原生 Loop 有限分段示例
+
+[下载工作流](example_workflows/MiniMaxH3原生Loop有限分段示例工作流.json)
+
+使用拆分后的分段节点和 ComfyUI 原生 `Start Loop / End Loop` 组合有限分段生成，便于在循环体中插入自定义处理。该文件是插件随附的只读示例，保留用户配置的原始内容。
 
 ## 基本使用方法
 

@@ -1,19 +1,19 @@
 {
-  "id": "9b12006b-e843-4821-a446-95e8f8ccff69",
-  "revision": 0,
-  "last_node_id": 12,
-  "last_link_id": 24,
+  "id": "b641c11e-2721-4c2a-9d83-fb32b522431c",
+  "revision": 1,
+  "last_node_id": 39,
+  "last_link_id": 32,
   "nodes": [
     {
-      "id": 1,
-      "type": "UNETLoader",
+      "id": 3,
+      "type": "VAELoader",
       "pos": [
-        100,
-        130
+        2251.8795875442624,
+        -1775.4671451807637
       ],
       "size": [
         270,
-        82
+        58
       ],
       "flags": {},
       "order": 0,
@@ -21,38 +21,35 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "MODEL",
-          "type": "MODEL",
+          "name": "VAE",
+          "type": "VAE",
           "links": [
-            12,
-            13
+            5
           ]
         }
       ],
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.34.0",
-        "Node name for S&R": "UNETLoader"
+        "Node name for S&R": "VAELoader"
       },
       "widgets_values": [
-        "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
-        "default"
+        "minimax_h3_video_vae_fp16.safetensors"
       ],
       "widgets_values_named": {
-        "unet_name": "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
-        "weight_dtype": "default"
+        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
       }
     },
     {
-      "id": 2,
-      "type": "CLIPLoader",
+      "id": 8,
+      "type": "VAELoader",
       "pos": [
-        100,
-        342
+        2248.9246677415204,
+        -1650.5054343059285
       ],
       "size": [
         270,
-        106
+        58
       ],
       "flags": {},
       "order": 1,
@@ -60,10 +57,82 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      }
+    },
+    {
+      "id": 13,
+      "type": "KSamplerSelect",
+      "pos": [
+        2920.872046736574,
+        -1938.2671953765982
+      ],
+      "size": [
+        327.5830274873233,
+        58
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.34.0",
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 2,
+      "type": "CLIPLoader",
+      "pos": [
+        2257.114408224928,
+        -2016.70196586143
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            14
+            4
           ]
         }
       ],
@@ -84,122 +153,163 @@
       }
     },
     {
-      "id": 3,
-      "type": "VAELoader",
+      "id": 30,
+      "type": "MiniMaxH3FiniteSegmentSampler",
       "pos": [
-        100,
-        578
+        3382.6564343091854,
+        -2277.136308558527
       ],
       "size": [
-        270,
-        58
+        470,
+        462
       ],
       "flags": {},
-      "order": 2,
+      "order": 7,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "VAE",
+          "name": "model",
+          "type": "MODEL",
+          "link": 32
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        },
+        {
+          "name": "vae",
           "type": "VAE",
-          "links": [
-            15
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.34.0",
-        "Node name for S&R": "VAELoader"
-      },
-      "widgets_values": [
-        "minimax_h3_video_vae_fp16.safetensors"
-      ],
-      "widgets_values_named": {
-        "vae_name": "minimax_h3_video_vae_fp16.safetensors"
-      }
-    },
-    {
-      "id": 4,
-      "type": "VAELoader",
-      "pos": [
-        100,
-        766
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
+          "link": 5
+        },
         {
-          "name": "VAE",
+          "name": "audio_vae",
           "type": "VAE",
-          "links": [
-            16
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.34.0",
-        "Node name for S&R": "VAELoader"
-      },
-      "widgets_values": [
-        "minimax_h3_audio_vae_fp32.safetensors"
-      ],
-      "widgets_values_named": {
-        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
-      }
-    },
-    {
-      "id": 6,
-      "type": "KSamplerSelect",
-      "pos": [
-        100,
-        954
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
+          "link": 6
+        },
         {
-          "name": "SAMPLER",
+          "name": "finite_plan",
+          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "link": 14
+        },
+        {
+          "name": "sampler",
           "type": "SAMPLER",
+          "link": 8
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Last Sampled Latent",
+          "type": "LATENT",
+          "links": null
+        },
+        {
+          "name": "Merged Frames",
+          "type": "IMAGE",
           "links": [
-            18
+            10
+          ]
+        },
+        {
+          "name": "Merged Audio",
+          "type": "AUDIO",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "Sampling Status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
+        "Node name for S&R": "MiniMaxH3FiniteSegmentSampler",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430"
+      },
+      "widgets_values": [
+        42,
+        "fixed",
+        "match",
+        "match"
+      ],
+      "widgets_values_named": {
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "continue_audio_latent": "match",
+        "ref_image_size": "match"
+      }
+    },
+    {
+      "id": 23,
+      "type": "CreateVideo",
+      "pos": [
+        3925.418306269351,
+        -2256.922580040417
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 10
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            12
           ]
         }
       ],
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.34.0",
-        "Node name for S&R": "KSamplerSelect"
+        "Node name for S&R": "CreateVideo"
       },
       "widgets_values": [
-        "euler"
+        24,
+        8,
+        "sRGB",
+        "none"
       ],
       "widgets_values_named": {
-        "sampler_name": "euler"
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB",
+        "codec": "none"
       }
     },
     {
-      "id": 5,
+      "id": 9,
       "type": "BasicScheduler",
       "pos": [
-        684.342599549244,
-        240.61023457716723
+        2936.5903379351976,
+        -2152.6392049345345
       ],
       "size": [
-        270,
+        329.3279677142127,
         106
       ],
       "flags": {},
@@ -209,7 +319,7 @@
         {
           "name": "model",
           "type": "MODEL",
-          "link": 12
+          "link": 31
         }
       ],
       "outputs": [
@@ -217,7 +327,7 @@
           "name": "SIGMAS",
           "type": "SIGMAS",
           "links": [
-            19
+            9
           ]
         }
       ],
@@ -238,162 +348,54 @@
       }
     },
     {
-      "id": 8,
-      "type": "MiniMaxH3FiniteSegmentSampler",
+      "id": 1,
+      "type": "UNETLoader",
       "pos": [
-        1270.1662706568575,
-        86.58326658429483
+        2253.794432977705,
+        -2229.028429176079
       ],
       "size": [
-        335.2433425160639,
-        250
+        541.2421023095617,
+        82
       ],
       "flags": {},
-      "order": 7,
+      "order": 4,
       "mode": 0,
-      "inputs": [
+      "inputs": [],
+      "outputs": [
         {
-          "name": "model",
+          "name": "MODEL",
           "type": "MODEL",
-          "link": 13
-        },
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 14
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 15
-        },
-        {
-          "name": "audio_vae",
-          "type": "VAE",
-          "link": 16
-        },
-        {
-          "name": "finite_plan",
-          "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
-          "link": 17
-        },
-        {
-          "name": "sampler",
-          "type": "SAMPLER",
-          "link": 18
-        },
-        {
-          "name": "sigmas",
-          "type": "SIGMAS",
-          "link": 19
-        }
-      ],
-      "outputs": [
-        {
-          "name": "Last Sampled Latent",
-          "type": "LATENT",
-          "links": null
-        },
-        {
-          "name": "Merged Frames",
-          "type": "IMAGE",
           "links": [
-            20
-          ]
-        },
-        {
-          "name": "Merged Audio",
-          "type": "AUDIO",
-          "links": [
-            21
-          ]
-        },
-        {
-          "name": "Sampling Status",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
-        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
-        "Node name for S&R": "MiniMaxH3FiniteSegmentSampler"
-      },
-      "widgets_values": [
-        20260908,
-        "fixed",
-        true,
-        "match"
-      ],
-      "widgets_values_named": {
-        "seed": 20260908,
-        "control_after_generate": "fixed",
-        "continue_audio_latent": true,
-        "ref_image_size": "match"
-      }
-    },
-    {
-      "id": 9,
-      "type": "CreateVideo",
-      "pos": [
-        1678.44352617081,
-        105.20661157025013
-      ],
-      "size": [
-        270,
-        126
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 20
-        },
-        {
-          "name": "audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 21
-        }
-      ],
-      "outputs": [
-        {
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "links": [
-            22
+            31,
+            32
           ]
         }
       ],
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.34.0",
-        "Node name for S&R": "CreateVideo"
+        "Node name for S&R": "UNETLoader"
       },
       "widgets_values": [
-        24,
-        8,
-        "sRGB"
+        "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
+        "default"
       ],
       "widgets_values_named": {
-        "fps": 24,
-        "bit_depth": 8,
-        "color_space": "sRGB"
+        "unet_name": "minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
+        "weight_dtype": "default"
       }
     },
     {
-      "id": 10,
+      "id": 29,
       "type": "SaveVideo",
       "pos": [
-        2263.6753902662895,
-        116.52433425160805
+        4791.413202581968,
+        -2236.404409353251
       ],
       "size": [
-        270,
-        130
+        3104.3404041850745,
+        1914.5674581522217
       ],
       "flags": {},
       "order": 9,
@@ -402,7 +404,7 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 22
+          "link": 12
         }
       ],
       "outputs": [
@@ -418,35 +420,41 @@
         "Node name for S&R": "SaveVideo"
       },
       "widgets_values": [
-        "H3_plugin_matrix/CASE_ID",
+        "video/H3_finite_segments",
         "mp4",
-        "auto",
         "h264",
+        "auto",
         "auto"
       ],
       "widgets_values_named": {
-        "filename_prefix": "H3_plugin_matrix/CASE_ID",
+        "filename_prefix": "video/H3_finite_segments",
         "format": "mp4",
-        "format.codec": "auto",
-        "codec": "h264",
-        "codec.encoding": "auto"
+        "format.codec": "h264",
+        "format.codec.encoding": "auto",
+        "codec": "auto"
       }
     },
     {
-      "id": 7,
+      "id": 11,
       "type": "MiniMaxH3TimelinePlanner",
       "pos": [
-        436.80340632088087,
-        404.37711434410755
+        2582.564316796727,
+        -1718.3141520688507
       ],
       "size": [
-        1791.439393939312,
-        1445
+        2157.804767380178,
+        1462
       ],
       "flags": {},
       "order": 5,
       "mode": 0,
       "inputs": [
+        {
+          "name": "import_preset",
+          "shape": 7,
+          "type": "MINIMAX_H3_TIMELINE_PRESET",
+          "link": null
+        },
         {
           "name": "prompt_index",
           "shape": 7,
@@ -463,156 +471,162 @@
         {
           "name": "Omni Media Bundle",
           "type": "MINIMAX_H3_OMNI_MEDIA_BUNDLE",
-          "links": []
+          "links": null
         },
         {
           "name": "Segment Plan",
           "type": "MINIMAX_H3_FINITE_SEGMENT_PLAN",
+          "slot_index": 2,
           "links": [
-            17
+            14
           ]
         }
       ],
       "properties": {
         "aux_id": "Songssx/ComfyUI-MiniMaxH3-TimelineDirector",
-        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430",
-        "Node name for S&R": "MiniMaxH3TimelinePlanner"
+        "Node name for S&R": "MiniMaxH3TimelinePlanner",
+        "ver": "bad313e7e1a7eb300a23aac9f094da63fb536430"
       },
       "widgets_values": [
-        512,
-        288,
-        8,
-        "{\"version\":5,\"fps\":24,\"globalPrompt\":\"\",\"selection\":{\"start\":0,\"duration\":8},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[],\"audios\":[],\"segmentConfig\":{\"count\":2,\"mode\":\"timeline\",\"segments\":[{\"images\":[],\"audios\":[],\"prompt\":\"\",\"startFrame\":0,\"endFrame\":192},{\"images\":[],\"audios\":[],\"prompt\":\"\",\"startFrame\":153,\"endFrame\":396}],\"activeIndex\":0}}",
+        960,
+        544,
+        7.3,
+        "{\"version\":9,\"fps\":24,\"globalPrompt\":\"\",\"secondPass\":true,\"secondPassModel\":\"minimax_h3_latent_upscaler_3d_bf16.safetensors\",\"secondPassHighSteps\":2,\"selection\":{\"start\":58.791666666666664,\"duration\":7.291666666666667},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[{\"id\":\"mucmzxe4-q3bvcn\",\"file\":\"minimax_h3_timeline_director/presets/达尔文MV/images/1790079302067_3chf0_MV分镜头.png\",\"name\":\"MV分镜头.png\",\"width\":1672,\"height\":941}],\"audios\":[{\"id\":\"mucn0odx-fxy4qz\",\"file\":\"minimax_h3_timeline_director/presets/达尔文MV/audios/1790079336883_2mxxm_带前奏达尔文一分钟.mp3\",\"name\":\"带前奏达尔文一分钟.mp3\",\"duration\":63.965805,\"trimStart\":0,\"audioMode\":\"locked\"}],\"segmentConfig\":{\"count\":8,\"activeIndex\":7,\"mode\":\"timeline\",\"segments\":[{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n\\nsummary: [keyframe completion + reference generation + audio reuse] An empty rain-drowned city at dusk establishes the world, then the camera finds a pair of earphones and an old photograph lying on a dark wooden table as the song's fourteen-second intro begins.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 1 and 2 of the nine-panel sheet define the shot order, the two viewpoints, the cool blue-teal palette with a single warm amber accent, and the graphic composition of the tabletop. <Subject 2> (the studio) is absent in this segment. <Audio 1>: partially_copy - only the 00:00.00-to-00:07.00 window is reused, that window carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the whole frame is held as an extreme wide shot of a city skyline at dusk in heavy rain, matching the framing, viewpoint, and colour palette of panel 1 of <Picture 1>. Glass towers and one long suspension bridge fill the middle distance while low-rise waterfront buildings line the near bank. Broad dents of cloud sit low and dark over the rooftops, and the last band of dusk orange glows between the cloud base and the ridge of the buildings; its reflection lies in long broken strips across the river below. Rain falls in thin continuous veils across the whole frame, the city lights blur into soft horizontal smears on the wet riverside road, and a few distant cars draw paired red and white streak lines along it. No person is visible anywhere in this shot. The camera pushes in with small amplitude at slow speed toward the bridge, the water bands widening and the reflection separating as it goes. Until about 00:03.400 the frame holds this single moving wide view with no cut, and the movement of the rain across the skyline is the only motion in the image.\\n[Shot 2] At 00:03.400, the shot cuts to a close overhead view of a dark wooden tabletop, matching the framing and palette of panel 2 of <Picture 1>. The camera arcs down with small amplitude at slow speed and settles into a static shot. On the wood sit three things: a black smartphone lying face up with its screen dark and a faint fingerprint smudge on the glass, a pair of white in-ear earphones whose two thin cables curve across the grain in a loose S, and a small square instant photograph of a young woman with a black bob and a bright open smile, lying slightly tilted with one corner lifted off the wood. A warm amber pool of light from an out-of-frame lamp on the upper left falls across the photograph and the earphones while the right half of the table stays in cool shadow, so the photo's white border catches the light and the phone's black glass stays dark. Nothing in this shot moves and no person is visible; no one is singing and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: Heavy rain hisses steadily against glass and metal across the whole segment while a low continuous city rumble sits underneath. Water runs off ledges in thin streams, and one distant car passes through standing water with a long hiss.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: a fingerpicked acoustic guitar at a slow tempo with a single sustained synthesiser pad held underneath, no percussion, no voice, no added reverb, and no newly generated sound.\\n\",\"startFrame\":0,\"endFrame\":175},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] A young man sits alone at a rain-streaked window while the intro continues, then a hand lifts the old photograph into the light in the last seconds before the singing begins.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 3 and 4 define the two viewpoints, the framing of the seated figure, the hand-and-photograph composition, and the cool blue interior with a single warm amber lamp. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2> (the studio) is absent in this segment. <Audio 1>: partially_copy - only the 00:07.00-to-00:14.56 window is reused, that window carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium shot frames the young man defined in <Subject 1> seated beside a rain-streaked window, matching the framing and light direction of panel 3 of <Picture 1>. He sits in three-quarter profile facing the window at the right of frame, his back to a dark room, his right shoulder against the window frame and his left hand resting on the sill. Rain runs down the outside of the glass in long uneven threads and the city beyond it is thrown far out of focus into soft blue-white blobs. A warm amber lamp out of frame behind him to the left rims the back of his hair and the collar of his jacket while his face stays in cool blue light from the window. He looks out and slightly down, blinks slowly, and does not speak. The camera pushes in with small amplitude at slow speed until the frame sits just wider than his shoulders. No one is singing and no mouth moves in sync with <Audio 1>.\\n[Shot 2] At 00:04.200, the shot cuts to a close shot of a hand holding a small square instant photograph up into the light, matching the framing of panel 4 of <Picture 1>. The camera holds a static shot. The hand belongs to the same young man, in the sleeve of the same charcoal-grey jacket, and the photograph is the same instant print seen in segment 1: a young woman with a black bob smiling straight at the lens. The print is held at a slight angle so the light rakes across its glossy surface, and the fingers of the holding hand curl around the white lower border with the thumbnail just visible. Behind the hand the room is a soft dark blur and the window light from the left edges the print's top border with a thin bright line. The hand does not tremble and the photograph does not move. He is not shown from the face in this shot, no one is singing, and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: Rain continues against the window as a low room tone holds underneath. One faint drip falls into standing water somewhere outside, and the fabric of the jacket shifts once as the hand lifts.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the fingerpicked acoustic guitar continues at the same slow tempo under the sustained synthesiser pad, and the guitar figure opens out slightly in the final second as the percussion approaches, with no voice and no newly generated sound.\\n```\\n\",\"startFrame\":136,\"endFrame\":362},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] The young man stands still inside a moving crowd on a lit street and begins to sing the opening line, then the frame opens into a warm memory of the two of them laughing together as he holds the second line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 5 and 6 define the two viewpoints, the crowd framing, the warm sunset-memory palette, and the two-figure composition of the flashback. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 3>: fully_preserved - the young woman of the memory, black bob and cream coat, is defined here for the first time and recurs in segment 8. <Audio 1>: partially_copy - only the 00:14.56-to-00:26.40 window is reused, which carries the opening two lines of the song plus the 0.56-second gap between them, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium shot frames the young man defined in <Subject 1> standing still in the middle of a moving crowd on a night street packed with neon signage, matching the framing, viewpoint, and palette of panel 5 of <Picture 1>. He is the only person in the frame who is not walking: he stands square to camera with both hands pushed into his jacket pockets and his chin slightly down, and the crowd flows past him on both sides as dark out-of-focus shapes. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 我的青春也不是没伤痕</d> word for word, beginning at the very first frame of this shot. Behind him tall vertical signs in red, blue, and green glow through the moving heads and throw coloured smears across his jacket, and the wet pavement bounces those colours upward into his face. The camera holds a static shot while the crowd drifts left to right in front of him.\\n[Shot 2] At 00:03.400, the shot cuts to the reverse medium close-up of him at the same street corner, the crowd now behind his shoulder and thrown out of focus. From 00:03.400 to about 00:05.880 he does not sing: his mouth stays closed, his jaw is still, and he breathes in through his nose while he looks down at the wet pavement. At about 00:05.880 his lips, jaw, and throat begin moving in exact sync with <Audio 1> again, mouthing the Mandarin lyric <d>[Chinese] 是明白爱是信仰的延伸</d> word for word, and he lifts his head level as the line begins. The camera pushes in with small amplitude at slow speed until the frame sits just wider than his shoulders.\\n[Shot 3] At 00:07.000, the shot cuts to a warm two-shot of a young man and a young woman standing side by side against a riverfront railing at sunset, matching the framing, palette, and light direction of panel 6 of <Picture 1>. The young woman is defined as <Subject 3>: a young East Asian woman in her early twenties with a black chin-length bob, fair skin, and a cream wool coat over a light knit top. Both of them are laughing freely and looking at each other and neither is looking at the lens. The sun sits low and slightly behind them at the right so its warm light lands on their faces and lifts the edges of their hair into a bright halo, while the whole background is blown to a soft amber haze over the river. The camera arcs with small amplitude at slow speed around them and the shot runs to the end of the segment. This is a memory and it is the only warm-toned shot in the whole video; no one in this shot is singing and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: A dense crowd murmur and the shuffle of many footsteps fill the first two shots under a low traffic hum. In the third shot the crowd drops away entirely and a light wind moves across open water with a faint fabric rustle.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the fingerpicked guitar and the sustained pad are joined by a soft kick-and-brush drum pattern at the same tempo, with no additional voice and no newly generated instrument.\\n```\\n\",\"startFrame\":323,\"endFrame\":651},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] A close shot of him staring at a phone screen that stays dark while he sings, then the frame moves for the first time into the studio and finds him at the microphone finishing the second line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 7 defines the viewpoint, the framing of the phone in his hands, and the bokeh street-light background; panel 8 defines the studio framing, microphone position, and split warm-and-cool lighting. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:26.40-to-00:37.60 window is reused, this window contains no clean breath pause between its two lines, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium close-up frames the young man defined in <Subject 1> standing at night under a row of round street lamps, matching the framing, viewpoint, and palette of panel 7 of <Picture 1>. He holds a black smartphone in both hands at chest height and looks down at it, and the screen is dark with no notification, no message, and no lit interface. He is lit from the upper right by a warm street lamp while his hands and the phone fall into shadow. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 什么特征人缘还是眼神</d> word for word, with his head still tipped down toward the phone. Behind him the street lights open into large soft circular bokeh discs in warm yellow and cool white, and a few blurred pedestrians cross the far background. The camera pushes in with small amplitude at slow speed toward the dark screen and his lowered face.\\n[Shot 2] At 00:05.000, the shot cuts to a tight close shot of his face with the top edge of the phone entering the bottom of the frame, so the dark screen stays visible without dominating. His lips, jaw, and throat keep moving in exact sync with <Audio 1>, mouthing the second half of <d>[Chinese] 也不会预知爱不爱的可能</d> word for word; the two lines run into each other with no breath pause, so his mouth never fully closes between them. His eyes stay on the phone until the final word, then lift slightly to look past the frame edge, and his brow tightens once. He never presses the screen, never types, and never puts the phone away. No one else in this shot is singing and no other mouth moves in sync with <Audio 1>.\\n[Shot 3] At 00:08.400, the shot cuts to a medium shot of the young man standing at the microphone in the studio defined in <Subject 2>, matching the framing, viewpoint, lighting, and prop placement of panel 8 of <Picture 1>. The dark street and the phone are gone entirely and the room is now the dim studio with its grid of grey acoustic foam, the black condenser microphone on its boom at his mouth height, and the narrow window strip at the right showing the distant skyline. The warm amber lamp behind his left shoulder rims his hair and the edge of his jacket while the cool blue window strip on the right keeps the far side of his face in shadow. He stands in three-quarter profile with his weight on his back foot and his hands loose at his sides, still finishing the tail of the line, and his mouth closes as the line ends. He then breathes in through his nose and does not sing again before the segment ends. The camera pushes in with small amplitude at slow speed until the frame reaches his chest. No other mouth moves in sync with <Audio 1> in this shot. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame, and the phone screen never lights up with a message.\\n\\noverall_soundscape: A quiet night street ambience with one distant car over wet asphalt runs under the first two shots, then is replaced at the cut by a dull low room tone with a faint air-handling hum. His jacket fabric creaks faintly once as he shifts his grip, and again as he settles in front of the microphone.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and soft drum pattern continue at the same tempo with a single low bass note entering under each bar, and no additional voice is layered onto it.\\n```\\n\",\"startFrame\":612,\"endFrame\":923},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He stands at the microphone through a long instrumental gap that holds on his face with no singing at all, then leans in and sings the next line with his whole body.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 defines the viewpoint, the studio framing, the microphone position, and the warm-and-cool split lighting on his face. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:37.60-to-00:46.80 window is reused, and this window opens with 3.36 seconds of instrumental music that carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the frame is held exactly as a medium shot of the young man defined in <Subject 1> standing at the microphone in the studio defined in <Subject 2>, matching the framing, viewpoint, lighting, and prop placement of panel 8 of <Picture 1>. He stands in three-quarter profile facing the microphone with his weight on his back foot, his hands down and loose at his sides, and his eyes open and looking slightly down at the mic capsule. The warm amber lamp behind his left shoulder rims his hair and the edge of his jacket while the cool blue window strip on the right keeps the far side of his face in shadow, so his face is split between the two. From 00:00.000 to about 00:03.360 he does not sing at all: his mouth stays closed, his jaw is still, he breathes in slowly through his nose, and he rocks his weight once between his feet. During this gap his eyes go from the mic capsule to the middle distance and a single tear gathers on the lower rim of his right eye and holds there without falling. The microphone stands untouched and the room makes no sudden sound. The camera pushes in with small amplitude at slow speed until the frame reaches his chest.\\n[Shot 2] At 00:03.360, the camera continues its push in with small amplitude at slow speed and settles into a tight medium close-up of his face and the microphone, without a cut. He lifts his chin, brings his mouth to within a hand's width of the pop filter, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 保持单身忍不住又沉沦</d> word for word, with his eyes closing from the second word onward and his brow drawing slightly together. Both hands stay loose at his sides and he never reaches for the microphone. The tear on his lower eyelid finally runs down as his eyes close. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: A dull low room tone with a faint air-handling hum holds under the whole segment, and the room stays otherwise silent apart from his single slow breath in the opening gap. His jacket fabric rustles once as he lifts his chin.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar and pad thin out during the opening gap to a single sustained note that is held almost unchanged for three seconds, the drum pattern returns one bar before the singing resumes, and no additional voice is layered onto the track.\\n```\\n\",\"startFrame\":884,\"endFrame\":1144},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He leans into the microphone and sings the whole line with his head turned down toward the capsule, then straightens and holds in silence to the cut.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 continues to define the viewpoint, the studio framing, and the split warm-and-cool lighting. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:46.80-to-00:53.10 window is reused and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium close-up frames the young man defined in <Subject 1> at the microphone in the studio defined in <Subject 2>, matching the framing and lighting of panel 8 of <Picture 1> and continuing directly from the previous segment. He is now leaning forward into the microphone with his weight on his front foot, still in three-quarter profile, his eyes shut. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 兜着圈子来去有时苦等</d> word for word, and his head turns a few degrees toward the microphone as the line ends. A faint sheen of sweat has gathered along his hairline and the tendon in his neck stands out as he pushes the phrase. The warm amber light on his left cheek and the cool blue on his right stay exactly as before. The camera holds a static shot.\\n[Shot 2] At 00:03.400, the camera pushes in with small amplitude at slow speed to a close shot of his face and the pop filter, without a cut. The line has ended: from 00:03.400 his mouth stays closed, his jaw is still, he opens his eyes and looks straight ahead past the microphone, straightens up slowly off his front foot, and his shoulders drop on a long exhale through his nose. He does not sing again before the segment ends and the microphone and his hands do not move. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The low room tone and faint air-handling hum hold under the whole segment, with one soft intake of breath before the line begins and a long exhale as it ends. The room stays otherwise silent apart from his voice.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the drum pattern, guitar, and pad continue at the same tempo and hold through the silent tail of the segment, with no additional voice layered onto the track.\\n```\\n\",\"startFrame\":1105,\"endFrame\":1297},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He finishes the line at the microphone, then the frame cuts out of the studio onto a rooftop where he stands at the parapet and lifts his head back into the open sky while he sings the next line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 defines the studio framing, and panel 9 defines the low-angle rooftop viewpoint, the parapet setting, and the deep blue city night behind him. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: partially_preserved - the studio is used only in the opening shot. <Audio 1>: partially_copy - only the 00:53.10-to-00:59.02 window is reused and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a tight close shot holds on the young man defined in <Subject 1> at the microphone in the studio defined in <Subject 2>, matching the framing and lighting of panel 8 of <Picture 1> and continuing directly from the previous segment. He stands with his eyes open and looks straight ahead past the pop filter, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the opening words of the Mandarin line <d>[Chinese] 人的一生感情是旋转门</d> word for word. The warm amber key on his left cheek and the cool blue rim on his right are unchanged. The camera pushes in with small amplitude at slow speed for the whole shot.\\n[Shot 2] At 00:01.900, the shot cuts to a low-angle medium shot of him standing at the edge of a rooftop, matching the framing, viewpoint, and palette of panel 9 of <Picture 1>. He is seen from slightly below and behind three-quarter, so the whole sky occupies the upper two thirds of the frame; he stands at a low concrete parapet with his hands still loose at his sides and his jacket hanging open, the wind lifting the hem of his T-shirt and moving the ends of his hair. The studio and the microphone are gone entirely, and the only light now is the city below: the night sky above him is deep blue grading to near-black at the top with a thin band of orange glow along the horizon behind the rooftops, and that low warm light catches the underside of his jaw and the front of his jacket. His lips, jaw, and throat stay in exact sync with <Audio 1>, mouthing the rest of <d>[Chinese] 人的一生感情是旋转门</d> word for word, and the line finishes inside this shot at about 00:05.920. He lifts his head back and looks up and slightly to the right into the open sky as the line ends, and the camera cranes up with small amplitude at slow speed, tilting with him so the sky opens further above his head. He does not look at the lens at any point. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The studio's low room tone holds under the first shot, then at the cut it disappears and a steady rooftop wind buffers across the whole frame, with faint traffic far below and a light fabric flap where the wind catches the open jacket.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and drum pattern continue at the same tempo and the pad widens as the frame opens onto the roof, with no additional voice layered onto the track.\\n```\\n\",\"startFrame\":1258,\"endFrame\":1450},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He holds the rooftop line to the last syllable, one final flash of the warm memory crosses the frame, and the song's closing words are sung back on the roof before the frame rests on his face.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 9 defines the rooftop framing and lighting, and panel 6 recurs as the closing flashback. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 3>: fully_preserved - the young woman of the memory, black bob and cream coat, exactly as defined in segment 3. <Audio 1>: partially_copy - only the 00:59.02-to-00:63.97 window is reused, this window closes the final lyric of the song, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the low-angle medium shot of the young man defined in <Subject 1> at the rooftop parapet continues without a cut, matching the framing and lighting of panel 9 of <Picture 1>. From 00:00.000 to about 00:01.300 his lips, jaw, and throat keep moving in exact sync with <Audio 1>, mouthing the second half of the Mandarin line <d>[Chinese] 转到了最后真心的就不分</d> word for word, with his head still tipped back into the sky and the wind still moving the ends of his hair. His eyes stay open and fixed on the sky above him. The camera cranes up with small amplitude at slow speed and comes to rest with the whole upper frame filled by deep blue night and one faint star.\\n[Shot 2] At 00:02.300, the shot cuts to the warm sunset two-shot from segment 3, matching the framing, palette, and light direction of panel 6 of <Picture 1>: the same young man and the young woman defined in <Subject 3> stand shoulder to shoulder against the riverfront railing, both laughing and looking at each other, the sun low behind them at the right and the background blown out to soft amber haze over the river. The camera arcs with small amplitude at slow speed and the shot lasts only about 1.5 seconds before the cut. No one in this shot is singing and no mouth moves in sync with <Audio 1>; this is a memory with no dialogue and no visible text.\\n[Shot 3] At 00:03.800, the shot cuts back to the rooftop low-angle medium shot. He has brought his head back down level and he looks directly ahead over the city, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the closing Mandarin lyric <d>[Chinese] 转到了最后真心的就不分</d> word for word from the opening word to the final one. The line finishes at about 00:04.720 and the frame holds on his face for the remaining time with no further movement, no new action, no camera movement, and no new vocal sound: the wind keeps moving his hair and his jacket hem, and his chest rises once as he breathes out through his nose. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The rooftop wind continues across the whole segment, thinning slightly during the warm flashback and returning as the frame goes back to the roof. The city traffic stays low and distant underneath, and a single faint fabric flap closes the final held shot.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and drum pattern carry the final line at the same tempo and the track ends with the end of the song, with no additional instrument and no newly generated voice.\\n```\\n\",\"startFrame\":1411,\"endFrame\":1586}]}}",
         ""
       ],
       "widgets_values_named": {
-        "width": 512,
-        "height": 288,
-        "generation_seconds": 8,
-        "timeline_data": "{\"version\":5,\"fps\":24,\"globalPrompt\":\"\",\"selection\":{\"start\":0,\"duration\":8},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[],\"audios\":[],\"segmentConfig\":{\"count\":2,\"mode\":\"timeline\",\"segments\":[{\"images\":[],\"audios\":[],\"prompt\":\"\",\"startFrame\":0,\"endFrame\":192},{\"images\":[],\"audios\":[],\"prompt\":\"\",\"startFrame\":153,\"endFrame\":396}],\"activeIndex\":0}}",
+        "width": 960,
+        "height": 544,
+        "generation_seconds": 7.3,
+        "timeline_data": "{\"version\":9,\"fps\":24,\"globalPrompt\":\"\",\"secondPass\":true,\"secondPassModel\":\"minimax_h3_latent_upscaler_3d_bf16.safetensors\",\"secondPassHighSteps\":2,\"selection\":{\"start\":58.791666666666664,\"duration\":7.291666666666667},\"videoAudioEnabled\":true,\"videoClips\":[],\"images\":[{\"id\":\"mucmzxe4-q3bvcn\",\"file\":\"minimax_h3_timeline_director/presets/达尔文MV/images/1790079302067_3chf0_MV分镜头.png\",\"name\":\"MV分镜头.png\",\"width\":1672,\"height\":941}],\"audios\":[{\"id\":\"mucn0odx-fxy4qz\",\"file\":\"minimax_h3_timeline_director/presets/达尔文MV/audios/1790079336883_2mxxm_带前奏达尔文一分钟.mp3\",\"name\":\"带前奏达尔文一分钟.mp3\",\"duration\":63.965805,\"trimStart\":0,\"audioMode\":\"locked\"}],\"segmentConfig\":{\"count\":8,\"activeIndex\":7,\"mode\":\"timeline\",\"segments\":[{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n\\nsummary: [keyframe completion + reference generation + audio reuse] An empty rain-drowned city at dusk establishes the world, then the camera finds a pair of earphones and an old photograph lying on a dark wooden table as the song's fourteen-second intro begins.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 1 and 2 of the nine-panel sheet define the shot order, the two viewpoints, the cool blue-teal palette with a single warm amber accent, and the graphic composition of the tabletop. <Subject 2> (the studio) is absent in this segment. <Audio 1>: partially_copy - only the 00:00.00-to-00:07.00 window is reused, that window carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the whole frame is held as an extreme wide shot of a city skyline at dusk in heavy rain, matching the framing, viewpoint, and colour palette of panel 1 of <Picture 1>. Glass towers and one long suspension bridge fill the middle distance while low-rise waterfront buildings line the near bank. Broad dents of cloud sit low and dark over the rooftops, and the last band of dusk orange glows between the cloud base and the ridge of the buildings; its reflection lies in long broken strips across the river below. Rain falls in thin continuous veils across the whole frame, the city lights blur into soft horizontal smears on the wet riverside road, and a few distant cars draw paired red and white streak lines along it. No person is visible anywhere in this shot. The camera pushes in with small amplitude at slow speed toward the bridge, the water bands widening and the reflection separating as it goes. Until about 00:03.400 the frame holds this single moving wide view with no cut, and the movement of the rain across the skyline is the only motion in the image.\\n[Shot 2] At 00:03.400, the shot cuts to a close overhead view of a dark wooden tabletop, matching the framing and palette of panel 2 of <Picture 1>. The camera arcs down with small amplitude at slow speed and settles into a static shot. On the wood sit three things: a black smartphone lying face up with its screen dark and a faint fingerprint smudge on the glass, a pair of white in-ear earphones whose two thin cables curve across the grain in a loose S, and a small square instant photograph of a young woman with a black bob and a bright open smile, lying slightly tilted with one corner lifted off the wood. A warm amber pool of light from an out-of-frame lamp on the upper left falls across the photograph and the earphones while the right half of the table stays in cool shadow, so the photo's white border catches the light and the phone's black glass stays dark. Nothing in this shot moves and no person is visible; no one is singing and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: Heavy rain hisses steadily against glass and metal across the whole segment while a low continuous city rumble sits underneath. Water runs off ledges in thin streams, and one distant car passes through standing water with a long hiss.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: a fingerpicked acoustic guitar at a slow tempo with a single sustained synthesiser pad held underneath, no percussion, no voice, no added reverb, and no newly generated sound.\\n\",\"startFrame\":0,\"endFrame\":175},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] A young man sits alone at a rain-streaked window while the intro continues, then a hand lifts the old photograph into the light in the last seconds before the singing begins.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 3 and 4 define the two viewpoints, the framing of the seated figure, the hand-and-photograph composition, and the cool blue interior with a single warm amber lamp. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2> (the studio) is absent in this segment. <Audio 1>: partially_copy - only the 00:07.00-to-00:14.56 window is reused, that window carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium shot frames the young man defined in <Subject 1> seated beside a rain-streaked window, matching the framing and light direction of panel 3 of <Picture 1>. He sits in three-quarter profile facing the window at the right of frame, his back to a dark room, his right shoulder against the window frame and his left hand resting on the sill. Rain runs down the outside of the glass in long uneven threads and the city beyond it is thrown far out of focus into soft blue-white blobs. A warm amber lamp out of frame behind him to the left rims the back of his hair and the collar of his jacket while his face stays in cool blue light from the window. He looks out and slightly down, blinks slowly, and does not speak. The camera pushes in with small amplitude at slow speed until the frame sits just wider than his shoulders. No one is singing and no mouth moves in sync with <Audio 1>.\\n[Shot 2] At 00:04.200, the shot cuts to a close shot of a hand holding a small square instant photograph up into the light, matching the framing of panel 4 of <Picture 1>. The camera holds a static shot. The hand belongs to the same young man, in the sleeve of the same charcoal-grey jacket, and the photograph is the same instant print seen in segment 1: a young woman with a black bob smiling straight at the lens. The print is held at a slight angle so the light rakes across its glossy surface, and the fingers of the holding hand curl around the white lower border with the thumbnail just visible. Behind the hand the room is a soft dark blur and the window light from the left edges the print's top border with a thin bright line. The hand does not tremble and the photograph does not move. He is not shown from the face in this shot, no one is singing, and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: Rain continues against the window as a low room tone holds underneath. One faint drip falls into standing water somewhere outside, and the fabric of the jacket shifts once as the hand lifts.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the fingerpicked acoustic guitar continues at the same slow tempo under the sustained synthesiser pad, and the guitar figure opens out slightly in the final second as the percussion approaches, with no voice and no newly generated sound.\\n```\\n\",\"startFrame\":136,\"endFrame\":362},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] The young man stands still inside a moving crowd on a lit street and begins to sing the opening line, then the frame opens into a warm memory of the two of them laughing together as he holds the second line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panels 5 and 6 define the two viewpoints, the crowd framing, the warm sunset-memory palette, and the two-figure composition of the flashback. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 3>: fully_preserved - the young woman of the memory, black bob and cream coat, is defined here for the first time and recurs in segment 8. <Audio 1>: partially_copy - only the 00:14.56-to-00:26.40 window is reused, which carries the opening two lines of the song plus the 0.56-second gap between them, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium shot frames the young man defined in <Subject 1> standing still in the middle of a moving crowd on a night street packed with neon signage, matching the framing, viewpoint, and palette of panel 5 of <Picture 1>. He is the only person in the frame who is not walking: he stands square to camera with both hands pushed into his jacket pockets and his chin slightly down, and the crowd flows past him on both sides as dark out-of-focus shapes. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 我的青春也不是没伤痕</d> word for word, beginning at the very first frame of this shot. Behind him tall vertical signs in red, blue, and green glow through the moving heads and throw coloured smears across his jacket, and the wet pavement bounces those colours upward into his face. The camera holds a static shot while the crowd drifts left to right in front of him.\\n[Shot 2] At 00:03.400, the shot cuts to the reverse medium close-up of him at the same street corner, the crowd now behind his shoulder and thrown out of focus. From 00:03.400 to about 00:05.880 he does not sing: his mouth stays closed, his jaw is still, and he breathes in through his nose while he looks down at the wet pavement. At about 00:05.880 his lips, jaw, and throat begin moving in exact sync with <Audio 1> again, mouthing the Mandarin lyric <d>[Chinese] 是明白爱是信仰的延伸</d> word for word, and he lifts his head level as the line begins. The camera pushes in with small amplitude at slow speed until the frame sits just wider than his shoulders.\\n[Shot 3] At 00:07.000, the shot cuts to a warm two-shot of a young man and a young woman standing side by side against a riverfront railing at sunset, matching the framing, palette, and light direction of panel 6 of <Picture 1>. The young woman is defined as <Subject 3>: a young East Asian woman in her early twenties with a black chin-length bob, fair skin, and a cream wool coat over a light knit top. Both of them are laughing freely and looking at each other and neither is looking at the lens. The sun sits low and slightly behind them at the right so its warm light lands on their faces and lifts the edges of their hair into a bright halo, while the whole background is blown to a soft amber haze over the river. The camera arcs with small amplitude at slow speed around them and the shot runs to the end of the segment. This is a memory and it is the only warm-toned shot in the whole video; no one in this shot is singing and no mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: A dense crowd murmur and the shuffle of many footsteps fill the first two shots under a low traffic hum. In the third shot the crowd drops away entirely and a light wind moves across open water with a faint fabric rustle.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the fingerpicked guitar and the sustained pad are joined by a soft kick-and-brush drum pattern at the same tempo, with no additional voice and no newly generated instrument.\\n```\\n\",\"startFrame\":323,\"endFrame\":651},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] A close shot of him staring at a phone screen that stays dark while he sings, then the frame moves for the first time into the studio and finds him at the microphone finishing the second line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 7 defines the viewpoint, the framing of the phone in his hands, and the bokeh street-light background; panel 8 defines the studio framing, microphone position, and split warm-and-cool lighting. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:26.40-to-00:37.60 window is reused, this window contains no clean breath pause between its two lines, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium close-up frames the young man defined in <Subject 1> standing at night under a row of round street lamps, matching the framing, viewpoint, and palette of panel 7 of <Picture 1>. He holds a black smartphone in both hands at chest height and looks down at it, and the screen is dark with no notification, no message, and no lit interface. He is lit from the upper right by a warm street lamp while his hands and the phone fall into shadow. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 什么特征人缘还是眼神</d> word for word, with his head still tipped down toward the phone. Behind him the street lights open into large soft circular bokeh discs in warm yellow and cool white, and a few blurred pedestrians cross the far background. The camera pushes in with small amplitude at slow speed toward the dark screen and his lowered face.\\n[Shot 2] At 00:05.000, the shot cuts to a tight close shot of his face with the top edge of the phone entering the bottom of the frame, so the dark screen stays visible without dominating. His lips, jaw, and throat keep moving in exact sync with <Audio 1>, mouthing the second half of <d>[Chinese] 也不会预知爱不爱的可能</d> word for word; the two lines run into each other with no breath pause, so his mouth never fully closes between them. His eyes stay on the phone until the final word, then lift slightly to look past the frame edge, and his brow tightens once. He never presses the screen, never types, and never puts the phone away. No one else in this shot is singing and no other mouth moves in sync with <Audio 1>.\\n[Shot 3] At 00:08.400, the shot cuts to a medium shot of the young man standing at the microphone in the studio defined in <Subject 2>, matching the framing, viewpoint, lighting, and prop placement of panel 8 of <Picture 1>. The dark street and the phone are gone entirely and the room is now the dim studio with its grid of grey acoustic foam, the black condenser microphone on its boom at his mouth height, and the narrow window strip at the right showing the distant skyline. The warm amber lamp behind his left shoulder rims his hair and the edge of his jacket while the cool blue window strip on the right keeps the far side of his face in shadow. He stands in three-quarter profile with his weight on his back foot and his hands loose at his sides, still finishing the tail of the line, and his mouth closes as the line ends. He then breathes in through his nose and does not sing again before the segment ends. The camera pushes in with small amplitude at slow speed until the frame reaches his chest. No other mouth moves in sync with <Audio 1> in this shot. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame, and the phone screen never lights up with a message.\\n\\noverall_soundscape: A quiet night street ambience with one distant car over wet asphalt runs under the first two shots, then is replaced at the cut by a dull low room tone with a faint air-handling hum. His jacket fabric creaks faintly once as he shifts his grip, and again as he settles in front of the microphone.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and soft drum pattern continue at the same tempo with a single low bass note entering under each bar, and no additional voice is layered onto it.\\n```\\n\",\"startFrame\":612,\"endFrame\":923},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He stands at the microphone through a long instrumental gap that holds on his face with no singing at all, then leans in and sings the next line with his whole body.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 defines the viewpoint, the studio framing, the microphone position, and the warm-and-cool split lighting on his face. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:37.60-to-00:46.80 window is reused, and this window opens with 3.36 seconds of instrumental music that carries no voice, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the frame is held exactly as a medium shot of the young man defined in <Subject 1> standing at the microphone in the studio defined in <Subject 2>, matching the framing, viewpoint, lighting, and prop placement of panel 8 of <Picture 1>. He stands in three-quarter profile facing the microphone with his weight on his back foot, his hands down and loose at his sides, and his eyes open and looking slightly down at the mic capsule. The warm amber lamp behind his left shoulder rims his hair and the edge of his jacket while the cool blue window strip on the right keeps the far side of his face in shadow, so his face is split between the two. From 00:00.000 to about 00:03.360 he does not sing at all: his mouth stays closed, his jaw is still, he breathes in slowly through his nose, and he rocks his weight once between his feet. During this gap his eyes go from the mic capsule to the middle distance and a single tear gathers on the lower rim of his right eye and holds there without falling. The microphone stands untouched and the room makes no sudden sound. The camera pushes in with small amplitude at slow speed until the frame reaches his chest.\\n[Shot 2] At 00:03.360, the camera continues its push in with small amplitude at slow speed and settles into a tight medium close-up of his face and the microphone, without a cut. He lifts his chin, brings his mouth to within a hand's width of the pop filter, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 保持单身忍不住又沉沦</d> word for word, with his eyes closing from the second word onward and his brow drawing slightly together. Both hands stay loose at his sides and he never reaches for the microphone. The tear on his lower eyelid finally runs down as his eyes close. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: A dull low room tone with a faint air-handling hum holds under the whole segment, and the room stays otherwise silent apart from his single slow breath in the opening gap. His jacket fabric rustles once as he lifts his chin.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar and pad thin out during the opening gap to a single sustained note that is held almost unchanged for three seconds, the drum pattern returns one bar before the singing resumes, and no additional voice is layered onto the track.\\n```\\n\",\"startFrame\":884,\"endFrame\":1144},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He leans into the microphone and sings the whole line with his head turned down toward the capsule, then straightens and holds in silence to the cut.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 continues to define the viewpoint, the studio framing, and the split warm-and-cool lighting. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: fully_preserved - the studio layout, foam wall, microphone, headphones, and window strip are exactly as defined. <Audio 1>: partially_copy - only the 00:46.80-to-00:53.10 window is reused and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a medium close-up frames the young man defined in <Subject 1> at the microphone in the studio defined in <Subject 2>, matching the framing and lighting of panel 8 of <Picture 1> and continuing directly from the previous segment. He is now leaning forward into the microphone with his weight on his front foot, still in three-quarter profile, his eyes shut. His lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the Mandarin lyric <d>[Chinese] 兜着圈子来去有时苦等</d> word for word, and his head turns a few degrees toward the microphone as the line ends. A faint sheen of sweat has gathered along his hairline and the tendon in his neck stands out as he pushes the phrase. The warm amber light on his left cheek and the cool blue on his right stay exactly as before. The camera holds a static shot.\\n[Shot 2] At 00:03.400, the camera pushes in with small amplitude at slow speed to a close shot of his face and the pop filter, without a cut. The line has ended: from 00:03.400 his mouth stays closed, his jaw is still, he opens his eyes and looks straight ahead past the microphone, straightens up slowly off his front foot, and his shoulders drop on a long exhale through his nose. He does not sing again before the segment ends and the microphone and his hands do not move. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The low room tone and faint air-handling hum hold under the whole segment, with one soft intake of breath before the line begins and a long exhale as it ends. The room stays otherwise silent apart from his voice.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the drum pattern, guitar, and pad continue at the same tempo and hold through the silent tail of the segment, with no additional voice layered onto the track.\\n```\\n\",\"startFrame\":1105,\"endFrame\":1297},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He finishes the line at the microphone, then the frame cuts out of the studio onto a rooftop where he stands at the parapet and lifts his head back into the open sky while he sings the next line.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 8 defines the studio framing, and panel 9 defines the low-angle rooftop viewpoint, the parapet setting, and the deep blue city night behind him. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 2>: partially_preserved - the studio is used only in the opening shot. <Audio 1>: partially_copy - only the 00:53.10-to-00:59.02 window is reused and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, a tight close shot holds on the young man defined in <Subject 1> at the microphone in the studio defined in <Subject 2>, matching the framing and lighting of panel 8 of <Picture 1> and continuing directly from the previous segment. He stands with his eyes open and looks straight ahead past the pop filter, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the opening words of the Mandarin line <d>[Chinese] 人的一生感情是旋转门</d> word for word. The warm amber key on his left cheek and the cool blue rim on his right are unchanged. The camera pushes in with small amplitude at slow speed for the whole shot.\\n[Shot 2] At 00:01.900, the shot cuts to a low-angle medium shot of him standing at the edge of a rooftop, matching the framing, viewpoint, and palette of panel 9 of <Picture 1>. He is seen from slightly below and behind three-quarter, so the whole sky occupies the upper two thirds of the frame; he stands at a low concrete parapet with his hands still loose at his sides and his jacket hanging open, the wind lifting the hem of his T-shirt and moving the ends of his hair. The studio and the microphone are gone entirely, and the only light now is the city below: the night sky above him is deep blue grading to near-black at the top with a thin band of orange glow along the horizon behind the rooftops, and that low warm light catches the underside of his jaw and the front of his jacket. His lips, jaw, and throat stay in exact sync with <Audio 1>, mouthing the rest of <d>[Chinese] 人的一生感情是旋转门</d> word for word, and the line finishes inside this shot at about 00:05.920. He lifts his head back and looks up and slightly to the right into the open sky as the line ends, and the camera cranes up with small amplitude at slow speed, tilting with him so the sky opens further above his head. He does not look at the lens at any point. No one else appears in the frame and no other mouth moves in sync with <Audio 1>. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The studio's low room tone holds under the first shot, then at the cut it disappears and a steady rooftop wind buffers across the whole frame, with faint traffic far below and a light fabric flap where the wind catches the open jacket.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and drum pattern continue at the same tempo and the pad widens as the frame opens onto the roof, with no additional voice layered onto the track.\\n```\\n\",\"startFrame\":1258,\"endFrame\":1450},{\"images\":[\"mucmzxe4-q3bvcn\"],\"audios\":[\"mucn0odx-fxy4qz\"],\"prompt\":\"<Subject 1> is the male singer: a young East Asian man in his early twenties, tall and slim with a narrow frame, skin pale and slightly cool-toned, black straight hair parted loosely in the middle and falling to just above his eyes with the ends curling slightly at the temples, thick dark level eyebrows, dark brown eyes, a straight nose, and a soft jawline. He wears a dark charcoal-grey denim or heavy-canvas jacket worn open, a plain white crew-neck T-shirt underneath, and dark trousers. The jacket sleeves are pushed to just below the elbow and the T-shirt is untucked. No watch, no ring, no necklace, no glasses, no hat, and no earrings are worn.\\n\\n<Subject 2> is the underground recording studio where he sings: a dim room about four metres by five, the walls covered in dark grey acoustic foam panels arranged in a regular grid, a single tall black condenser microphone on a black boom stand positioned in front of him at mouth height, a shock mount and a round pop filter just above the mic capsule, a pair of closed-back studio headphones hooked over the boom arm, and beyond the foam wall at the right of frame a narrow horizontal window strip showing a distant dark city skyline with scattered lit windows. The only light sources are one warm amber practical lamp on a low stool behind him to the left and a cool blue spill from the window strip on the right, so his face is split between warm light on the left cheek and cool light on the right.\\n\\n<Audio 1> is the final soundtrack of the target video, a Mandarin pop song at 145.5 BPM running 63.97 seconds, and in this segment its 00:SS.SS-to-00:SS.SS window is reused as the segment's entire audio track, cut off by the end of the video. <Audio 1> is the voice source of <Subject 1> (S1).\\n```text\\nsummary: [keyframe completion + reference generation + audio reuse] He holds the rooftop line to the last syllable, one final flash of the warm memory crosses the frame, and the song's closing words are sung back on the roof before the frame rests on his face.\\n\\nretention_analysis: <Picture 1>: fully_preserved - panel 9 defines the rooftop framing and lighting, and panel 6 recurs as the closing flashback. <Subject 1>: fully_preserved - his face, hair, jacket, and T-shirt are exactly as defined. <Subject 3>: fully_preserved - the young woman of the memory, black bob and cream coat, exactly as defined in segment 3. <Audio 1>: partially_copy - only the 00:59.02-to-00:63.97 window is reused, this window closes the final lyric of the song, and no additional generated voice is layered onto it.\\n\\ndetailed_description: [Shot 1] Live-action, cinematic, the low-angle medium shot of the young man defined in <Subject 1> at the rooftop parapet continues without a cut, matching the framing and lighting of panel 9 of <Picture 1>. From 00:00.000 to about 00:01.300 his lips, jaw, and throat keep moving in exact sync with <Audio 1>, mouthing the second half of the Mandarin line <d>[Chinese] 转到了最后真心的就不分</d> word for word, with his head still tipped back into the sky and the wind still moving the ends of his hair. His eyes stay open and fixed on the sky above him. The camera cranes up with small amplitude at slow speed and comes to rest with the whole upper frame filled by deep blue night and one faint star.\\n[Shot 2] At 00:02.300, the shot cuts to the warm sunset two-shot from segment 3, matching the framing, palette, and light direction of panel 6 of <Picture 1>: the same young man and the young woman defined in <Subject 3> stand shoulder to shoulder against the riverfront railing, both laughing and looking at each other, the sun low behind them at the right and the background blown out to soft amber haze over the river. The camera arcs with small amplitude at slow speed and the shot lasts only about 1.5 seconds before the cut. No one in this shot is singing and no mouth moves in sync with <Audio 1>; this is a memory with no dialogue and no visible text.\\n[Shot 3] At 00:03.800, the shot cuts back to the rooftop low-angle medium shot. He has brought his head back down level and he looks directly ahead over the city, and his lips, jaw, and throat move in exact sync with <Audio 1>, mouthing the closing Mandarin lyric <d>[Chinese] 转到了最后真心的就不分</d> word for word from the opening word to the final one. The line finishes at about 00:04.720 and the frame holds on his face for the remaining time with no further movement, no new action, no camera movement, and no new vocal sound: the wind keeps moving his hair and his jacket hem, and his chest rises once as he breathes out through his nose. Across the whole segment no text, subtitle, caption, lyric card, logo, or watermark appears in the frame.\\n\\noverall_soundscape: The rooftop wind continues across the whole segment, thinning slightly during the warm flashback and returning as the frame goes back to the roof. The city traffic stays low and distant underneath, and a single faint fabric flap closes the final held shot.\\n\\nnon_diegetic_music: <Audio 1> is the only audio: the guitar, pad, and drum pattern carry the final line at the same tempo and the track ends with the end of the song, with no additional instrument and no newly generated voice.\\n```\\n\",\"startFrame\":1411,\"endFrame\":1586}]}}",
         "minimax_h3_timeline": ""
       }
     }
   ],
   "links": [
     [
-      12,
-      1,
-      0,
-      5,
-      0,
-      "MODEL"
-    ],
-    [
-      13,
-      1,
-      0,
-      8,
-      0,
-      "MODEL"
-    ],
-    [
-      14,
+      4,
       2,
       0,
-      8,
+      30,
       1,
       "CLIP"
     ],
     [
-      15,
+      5,
       3,
       0,
-      8,
+      30,
       2,
       "VAE"
     ],
     [
-      16,
-      4,
-      0,
-      8,
-      3,
-      "VAE"
-    ],
-    [
-      17,
-      7,
-      2,
-      8,
-      4,
-      "MINIMAX_H3_FINITE_SEGMENT_PLAN"
-    ],
-    [
-      18,
       6,
-      0,
       8,
+      0,
+      30,
+      3,
+      "VAE"
+    ],
+    [
+      8,
+      13,
+      0,
+      30,
       5,
       "SAMPLER"
     ],
     [
-      19,
-      5,
+      9,
+      9,
       0,
-      8,
+      30,
       6,
       "SIGMAS"
     ],
     [
-      20,
-      8,
+      10,
+      30,
       1,
-      9,
+      23,
       0,
       "IMAGE"
     ],
     [
-      21,
-      8,
+      11,
+      30,
       2,
-      9,
+      23,
       1,
       "AUDIO"
     ],
     [
-      22,
-      9,
+      14,
+      11,
+      2,
+      30,
+      4,
+      "MINIMAX_H3_FINITE_SEGMENT_PLAN"
+    ],
+    [
+      12,
+      23,
       0,
-      10,
+      29,
       0,
       "VIDEO"
+    ],
+    [
+      31,
+      1,
+      0,
+      9,
+      0,
+      "MODEL"
+    ],
+    [
+      32,
+      1,
+      0,
+      30,
+      0,
+      "MODEL"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.5950413223141021,
+      "scale": 0.39142513012206187,
       "offset": [
-        420.93548903600237,
-        177.1697101863066
+        -1862.807533918557,
+        2976.423733217081
       ]
     },
+    "frontendVersion": "1.53.6",
     "anomalous_hashes": {
-      "1_minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors": {
-        "hash": "",
-        "size": 20980178976
-      },
       "3_minimax_h3_video_vae_fp16.safetensors": {
         "hash": "",
         "size": 5207808496
       },
-      "4_minimax_h3_audio_vae_fp32.safetensors": {
+      "8_minimax_h3_audio_vae_fp32.safetensors": {
         "hash": "",
         "size": 605254808
+      },
+      "1_minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors": {
+        "hash": "",
+        "size": 20980178976
       }
     },
-    "frontendVersion": "1.51.9",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": true,
     "VHS_KeepIntermediate": true
+  },
+  "extensions": {
+    "seed_widgets": {
+      "30": 0
+    }
   },
   "version": 0.4
 }

@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [Unreleased]
 
+### Added
+
+- Add local configuration-only and complete-media preset folders, a preset browser/loader node, an export node accepting either Material Plan or Segment Plan, and an editable preset-import input on Material Planner.
+- Persist an executed preset back into the Material Planner UI so imported materials, segment timing, prompts, and assignments remain editable after disconnecting the loader.
+- Add a native ComfyUI `Start Loop` / `End Loop` workflow path with public nodes for loop-state initialization, per-iteration segment selection, continuation preparation, overlap-aware accumulation, and final output resolution.
+- Expose per-segment two-stage settings so native Loop workflows can freely choose ordinary sampling, the bundled H3 two-stage sampler, previews, saves, or custom processing inside the loop body.
+
+### Changed
+
+- Make the H3 Plan Encoder and bundled H3 Two-Stage Sampler visible for explicit native Loop workflow construction.
+- Keep the original Finite Segment Sampler as a backward-compatible one-node workflow path.
+
+### Fixed
+
+- Reset the active segment before applying imported preset widget values, allowing repeated imports when the next preset has fewer segments than the previous one.
+- Prefer and auto-repair selection to a structurally compatible MiniMax H3 latent upscaler when the shared model directory also contains LTX upscalers; reject incompatible checkpoints before low-resolution sampling and report the selected filename clearly.
+
 ## [0.8.0] - 2026-09-17
 
 ### Added
