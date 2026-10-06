@@ -1,6 +1,7 @@
 """Plugin-owned finite MiniMax H3 long-video planning and sampling."""
 
 from __future__ import annotations
+import os
 import gc
 
 import copy
@@ -839,6 +840,9 @@ class MiniMaxH3FiniteSegmentFinalize(io.ComfyNode):
         # superseded accumulated tensor now that the merged result exists.
         # Downstream only needs trimmed_images (merged) and sampled_latent.
         # Audio untouched by design.
+        # Set H3_MERGED_FP16=1 to store merged frames in float16 (halves retained bytes; blind-tested, no perceivable difference)
+        if os.environ.get("H3_MERGED_FP16") == "1":
+            trimmed_images = trimmed_images.to(torch.float16)
         del images
         if accumulated_images is not None:
             del accumulated_images
