@@ -22,6 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 - Reset the active segment before applying imported preset widget values, allowing repeated imports when the next preset has fewer segments than the previous one.
 - Prefer and auto-repair selection to a structurally compatible MiniMax H3 latent upscaler when the shared model directory also contains LTX upscalers; reject incompatible checkpoints before low-resolution sampling and report the selected filename clearly.
+- [spill-seg-offload] Evict per-segment decoded frames and the superseded accumulated tensor after merge in FiniteSegmentFinalize; sampled latent, merged output and audio untouched. Prevents RAM OOM on long multi-segment sampler jobs.
 
 ## [0.8.0] - 2026-09-17
 
